@@ -1,0 +1,216 @@
+================================================================================
+                    SYSTEM ARCHITECTURE & WORKFLOW DIAGRAMS
+         Multi-Agent Reinforcement Learning for Football Simulation
+================================================================================
+
+TABLE OF CONTENTS:
+  DIAGRAM 1: End-to-End System Architecture (CTDE MAPPO Architecture)
+  DIAGRAM 2: Geometric Tactical Feature & Space Score Computation Pipeline
+  DIAGRAM 3: Tactical Valuation & Multi-Component Reward Dataflow
+  DIAGRAM 4: 4-Phase Research & Controlled Comparative Workflow
+  DIAGRAM 5: Pitch Coordinate Layout & Passing Corridor Geometry
+
+================================================================================
+DIAGRAM 1: END-TO-END SYSTEM ARCHITECTURE (CTDE MAPPO PIPELINE)
+================================================================================
+
+   +-----------------------------------------------------------------------+
+   |                  GOOGLE RESEARCH FOOTBALL (GRF) SIMULATOR             |
+   |   Physics Simulation: 22 Players [x, y, vx, vy] + Ball [x, y, z, v]   |
+   +-----------------------------------+-----------------------------------+
+                   |                                       |
+                   | Global State (s_t)                    | Local Obs (o_raw)
+                   v                                       v
+   +-------------------------------+       +-------------------------------+
+   |      CENTRALIZED CRITIC       |       |   SEMANTIC FEATURE ENGINE     |
+   |                               |       |                               |
+   |  True Global State Vector s_t |       |  1. Space Score S(j)          |
+   |               |               |       |  2. Pass-Lane Openness L_pass |
+   |               v               |       |  3. Time-to-Reach (TTR) & PC  |
+   |    Value Network V_phi(s_t)   |       |  4. Shot Viability Score      |
+   |               |               |       +---------------+---------------+
+   |               v               |                       |
+   |    State Value Estimate v_t   |                       v
+   +---------------+---------------+       +-------------------------------+
+                   |                       |   AUGMENTED LOCAL OBS o_aug   |
+                   |                       |    [ o_raw, F_sem ]           |
+                   |                       +---------------+---------------+
+                   |                                       |
+                   |                                       v
+                   |                       +-------------------------------+
+                   |                       |    DECENTRALIZED ACTORS       |
+                   |                       |                               |
+                   |                       |  Agent 1 (Carrier) : pi_theta |
+                   |                       |  Agent 2 (Runner)  : pi_theta |
+                   |                       |  Agent N (Runner)  : pi_theta |
+                   |                       +---------------+---------------+
+                   |                                       |
+                   |                                       | Action Vector a_t
+                   |                                       v
+                   |                       +-------------------------------+
+                   |                       |   ENVIRONMENT STEP a_t        |
+                   |                       |   State s_t -> State s_{t+1}  |
+                   |                       +---------------+---------------+
+                   |                                       |
+                   |                                       v
+                   |                       +-------------------------------+
+                   |                       |    TACTICAL REWARD ENGINE     |
+                   |                       |                               |
+                   |                       |  + Sparse Goal Reward (r_sp)  |
+                   |                       |  + Progression (Delta_OBV)   |
+                   |                       |  + Off-Ball Space (r_space)   |
+                   |                       |  + Disruption (r_disrupt)     |
+                   |                       +---------------+---------------+
+                   |                                       |
+                   v                                       v
+   +-----------------------------------------------------------------------+
+   |            GENERALIZED ADVANTAGE ESTIMATION & PPO CLIPPED OPT         |
+   |                                                                       |
+   |  Advantage: A_t = sum (gamma * lambda)^l * delta_{t+l}^V              |
+   |  Target:    R_target = A_t + V_phi(s_t)                               |
+   |  Loss:      L_policy(theta) + c1 * L_value(phi) - c2 * L_entropy      |
+   |                                                                       |
+   |  Policy Gradients  ---> Updates Decentralized Actors pi_theta         |
+   |  Value Gradients   ---> Updates Centralized Critic V_phi              |
+   +-----------------------------------------------------------------------+
+
+================================================================================
+DIAGRAM 2: GEOMETRIC TACTICAL FEATURE COMPUTATION PIPELINE
+================================================================================
+
+   Raw Coordinates: Carrier p_b, Teammate p_j, Defenders {p_d}
+                           |
+                           v
+   +---------------------------------------------------------------+
+   | 1. Vector Projection:                                         |
+   |    v_pass = p_j - p_b                                         |
+   |    t_proj(d) = dot(p_d - p_b, v_pass) / ||v_pass||^2          |
+   |    p_closest(d) = p_b + clip(t_proj(d), 0, 1) * v_pass        |
+   +-------------------------------+-------------------------------+
+                                   |
+                                   v
+   +---------------------------------------------------------------+
+   | 2. Gaussian Dynamic Corridor Occlusion:                       |
+   |    h_perp(d) = || p_d - p_closest(d) ||_2                     |
+   |    P_intercept(d) = exp( -h_perp(d)^2 / (2 * sigma_d^2) )     |
+   |    L_pass(b, j) = 1.0 - max_{d} P_intercept(d)                |
+   +-------------------------------+-------------------------------+
+                                   |
+                                   v
+   +---------------------------------------------------------------+
+   | 3. Proximity Metrics:                                         |
+   |    D_ball(j) = || p_j - p_b ||_2 / D_max                      |
+   |    D_def(j)  = min_{d} || p_j - p_d ||_2 / D_safe             |
+   +-------------------------------+-------------------------------+
+                                   |
+                                   v
+   +---------------------------------------------------------------+
+   | 4. Calibrated Space Score Synthesis:                          |
+   |    S(j) = -0.50 * D_ball(j) + 0.30 * D_def(j) + 0.40 * L_pass |
+   +-------------------------------+-------------------------------+
+                                   |
+                                   v
+   +---------------------------------------------------------------+
+   | 5. Stack into Semantic Feature Vector:                        |
+   |    F_sem[j] = [ S(j), D_def(j), L_pass(b,j), TTR(j), Shot(j) ]|
+   +---------------------------------------------------------------+
+
+================================================================================
+DIAGRAM 3: TACTICAL VALUATION & MULTI-COMPONENT REWARD DATAFLOW
+================================================================================
+
+    State Transition (s_t, a_t, s_{t+1})
+                   |
+     +-------------+-------------+-------------+
+     |             |             |             |
+     v             v             v             v
+[Goal Event?] [Ball Move]   [Teammate Runs] [Def Movement]
+     |             |             |             |
+     v             v             v             v
+ +--------+   +----------+   +----------+   +----------+
+ | r_sp   |   |Delta_OBV |   | r_space  |   |r_disrupt |
+ | +1/-1  |   |V(p_{t+1})|   |max(0,    |   |mean(     |
+ |        |   |- V(p_t)  |   | S_{t+1}  |   | ||Delta  |
+ |        |   | (16x12)  |   |  - S_t)  |   |   p_d||) |
+ +---+----+   +----+-----+   +----+-----+   +----+-----+
+     |             |              |              |
+     | * 1.00      | * 0.20       | * 0.15       | * 0.10
+     v             v              v              v
+   +------------------------------------------------+
+   |   COMPOSITE TACTICAL STEP REWARD R_total(t)    |
+   |   (Guaranteed Policy-Invariant under PBRS)     |
+   +------------------------------------------------+
+
+================================================================================
+DIAGRAM 4: 4-PHASE RESEARCH & CONTROLLED COMPARATIVE WORKFLOW
+================================================================================
+
+  +-------------------------------------------------------------------------+
+  | PHASE 1: ENVIRONMENT & DATA CALIBRATION                                 |
+  |  - Configure Google Research Football (GRF Academy 3v1 / Pass&Shoot)   |
+  |  - Ingest StatsBomb Open Data -> Fit 16x12 Expected Threat (xT) Grid    |
+  +------------------------------------+------------------------------------+
+                                       |
+                                       v
+  +-------------------------------------------------------------------------+
+  | PHASE 2: 2x2 FACTORIAL ABLATION MATRIX                                  |
+  |  - Model 1 (Control Baseline) : Raw Obs      + Sparse Reward            |
+  |  - Model 2 (State Only)       : Semantic Obs + Sparse Reward            |
+  |  - Model 3 (Reward Only)      : Raw Obs      + Multi-Component Reward   |
+  |  - Model 4 (Full Novel System): Semantic Obs + Multi-Component Reward   |
+  +------------------------------------+------------------------------------+
+                                       |
+                                       v
+  +-------------------------------------------------------------------------+
+  | PHASE 3: MULTI-SEED RIGOROUS TRAINING                                   |
+  |  - 5 Independent Seeds: 42, 101, 2024, 7, 888                           |
+  |  - Compute Budget: 3M - 5M environment steps per seed                   |
+  |  - MAPPO Optimization: Horizon=512, Epochs=4, Batch=64, LR=3e-4         |
+  +------------------------------------+------------------------------------+
+                                       |
+                                       v
+  +-------------------------------------------------------------------------+
+  | PHASE 4: TACTICAL BENCHMARKING & STATISTICAL ANALYSIS                   |
+  |  - TPCA: Tactical Phase Classification Accuracy (Target: > 89.0%)       |
+  |  - OBMQ: Off-Ball Movement Quality Score (Target: 0.85 - 0.92)          |
+  |  - Decision Coherence: Agreement with coaching rules (Cohen's kappa>0.7)|
+  |  - Risk Profile Modulation: Leading (<=18% through-balls) vs            |
+  |                             Trailing (>=35% through-balls)              |
+  |  - Statistical Significance: Welch's t-test (p < 0.01) + Cohen's d > 1.2|
+  +-------------------------------------------------------------------------+
+
+================================================================================
+DIAGRAM 5: PITCH COORDINATE LAYOUT & PASSING CORRIDOR GEOMETRY
+================================================================================
+
+Normalized Coordinates: X in [-1.0, 1.0], Y in [-0.42, 0.42]
+
++-----------------------------------+-----------------------------------+
+| Defensive Half                    | Attacking Half                    |
+|                                   |                                   |
+|                                   |               [Receiver j]        |
+|                                   |              / (p_j)              |
+|                                   |             /                     |
+|                                   |   Gaussian /                      |
+|                                   |   Corridor/                       |
+|                                   |         |/                        |
+|                                   |      [Defender d]                 |
+|                                   |      (h_perp distance)            |
+|                                   |        /                          |
+|                                   |       / v_pass                    |
+|        [Own Goal]                 |      /                  [Opp Goal]|
+|        [-1.0, 0.0]        (0.0, 0.0)   /                    [+1.0,0.0]|
+|            |                      |   [Ball Carrier b]          |     |
+|            |                      |   (p_b)                     |     |
+|                                   |                                   |
+|                                   |                                   |
+|                                   |                                   |
++-----------------------------------+-----------------------------------+
+
+Key Geometric Calculations:
+  * Passing vector:        v_pass = p_j - p_b
+  * Projection scalar:     t_proj(d) = dot(p_d - p_b, v_pass) / ||v_pass||^2
+  * Orthogonal distance:   h_perp(d) = || p_d - (p_b + t_proj * v_pass) ||_2
+  * Interception dynamic:  P_intercept(d) = exp( -h_perp(d)^2 / (2 * sigma_d^2) )
+  * Pass lane clearance:   L_pass = 1.0 - max_{d} P_intercept(d)
+================================================================================

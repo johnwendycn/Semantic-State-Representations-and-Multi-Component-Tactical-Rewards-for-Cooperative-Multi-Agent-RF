@@ -1,0 +1,392 @@
+================================================================================
+           STANDARD PROFESSIONAL METHODOLOGY & IMPLEMENTATION BLUEPRINT
+            Multi-Agent Reinforcement Learning for Football Simulation
+================================================================================
+
+Document: Standard Research & Engineering Methodology (NeurIPS / AAMAS Standard)
+Target Domain: Sports Analytics, Semantic State Modeling, Tactical RL
+Author/System: Antigravity AI Engineering
+Revision: 1.0 (Production-Ready Spec)
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. METHODOLOGY PRINCIPLES & SCIENTIFIC RIGOR
+2. HARDWARE, ENVIRONMENT & OS ARCHITECTURE
+3. MATHEMATICAL & ALGORITHMIC SPECIFICATIONS & COMPLEXITY
+   3.1 Formal Dec-POMDP Mathematical Framework
+   3.2 Semantic State Representation (EDMS-Inspired Engine)
+   3.3 Tactical Valuation Engine (OBV & Spatial Value Surface)
+   3.4 Multi-Component Composite Reward Formulation & PBRS Invariance
+   3.5 Formal Algorithms (Pseudocode: Features, Reward, MAPPO)
+   3.6 Computational Time & Space Complexity Analysis
+4. EXPERIMENTAL DESIGN & ABLATION REGIME
+5. STEP-BY-STEP IMPLEMENTATION ROADMAP (WORKFLOW)
+6. STATISTICAL EVALUATION & PUBLICATION BENCHMARKS
+7. RISK MITIGATION & COMMON RL PITFALLS
+8. REPOSITORY DIRECTORY LAYOUT & ARTIFACT SPEC
+
+================================================================================
+1. METHODOLOGY PRINCIPLES & SCIENTIFIC RIGOR
+================================================================================
+To meet the highest standards of peer-reviewed scientific literature (e.g., 
+NeurIPS, ICLR, AAMAS, Nature Machine Intelligence, MIT Sloan Sports Analytics):
+
+1. STRICT CONTROLLED COMPARISON:
+   The Control (Baseline) and Treatment (Novel Agent) MUST share identical:
+   - Neural network backbone capacity (parameter count, layer depth, activation).
+   - Optimization hyperparameters (learning rate, entropy coef, clip epsilon, GAE lambda).
+   - Random seed schedules and total environment interaction step budget.
+   - Simulation engine dynamics and opponent difficulty settings.
+
+2. MULTI-LEVEL EVALUATION CRITERIA:
+   Performance must not be measured solely by goal count or win rate. Evaluation 
+   must report:
+   - Primary Task Performance: Win rate, goal differential, expected goals (xG).
+   - Tactical Realism: Off-Ball Movement Quality (OBMQ), Tactical Phase Accuracy (TPCA).
+   - Game-Theoretic Rationality: Policy adaptation conditioned on game context 
+     (e.g., risk aversion when leading vs. aggression when trailing).
+   - Sample Efficiency: Steps required to reach asymptotic policy performance.
+
+================================================================================
+2. HARDWARE, ENVIRONMENT & OS ARCHITECTURE
+================================================================================
+
+[A] RECOMMENDED PLATFORM CONFIGURATION:
+  - Host OS: Windows 10/11 with WSL2 (Ubuntu 22.04 LTS) OR Native Ubuntu Linux.
+    *Rationale: Google Research Football (GRF) relies on C++ (CMake, Boost, OpenGL).
+     WSL2 eliminates MSVC compilation conflicts and provides full GPU-passthrough.*
+  - Python Environment: Python 3.10 virtual environment (via venv or conda).
+  - Deep Learning Backend: PyTorch 2.1+ with CUDA 12.x support.
+  - RL Framework: CleanRL (for transparent, single-file auditability) OR 
+    Stable-Baselines3 / Ray RLlib (for production-grade distributed rollout).
+
+[B] COMPUTE BUDGET & SCENARIO SELECTION:
+  - Scenario 1 (Modular Benchmark): `academy_3_vs_1_with_keeper`
+    *Focus: Off-ball runs, pass-lane generation, decision-making under defensive pressure.
+    *Compute Requirement: 1x NVIDIA RTX 3060/4070 (or 8 CPU cores).
+    *Training Horizon: 3M to 5M steps (~2 to 4 hours per seed).
+  - Scenario 2 (Multi-Phase Benchmark): `academy_pass_and_shoot_with_keeper` & `academy_counterattack_easy`
+    *Focus: High-tempo spatial exploitation and transition defense.
+    *Compute Requirement: 5M to 10M steps (~4 to 8 hours per seed).
+  - Scenario 3 (Full Match Benchmark - Optional Scale-Up): `11_vs_11_easy_stochastic_v2`
+    *Focus: Full squad pitch control and tactical phase switching.
+    *Training Horizon: 25M+ steps.
+
+================================================================================
+3. MATHEMATICAL & ALGORITHMIC SPECIFICATIONS & COMPLEXITY
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1 FORMAL DEC-POMDP MATHEMATICAL FRAMEWORK
+--------------------------------------------------------------------------------
+The multi-agent football simulation is formulated as a Decentralized Partially 
+Observable Markov Decision Process (Dec-POMDP):
+
+  M = < I, S, {A_i}, P, {R_i}, {Omega_i}, {O_i}, gamma >
+
+Where:
+  - I = {1, ..., N} represents controllable attacking players.
+  - S in R^D is the global environment state (player positions, velocities, ball state).
+  - A_i is the discrete action set for agent i (e.g., idle, 8 move directions, passes, shot).
+  - P(s' | s, a) is the environment state transition probability function.
+  - Omega_i is the observation space and O_i(s) is the local observation mapping.
+  - R_i(s, a, s') is the local agent reward signal.
+  - gamma in [0, 1) is the temporal discount factor (gamma = 0.993).
+
+Decentralized execution utilizes local policy pi_{theta_i}(a_i | o_i), while 
+centralized training leverages global state critic V_phi(s).
+
+--------------------------------------------------------------------------------
+3.2 SEMANTIC STATE REPRESENTATION (EDMS-INSPIRED ENGINE)
+--------------------------------------------------------------------------------
+Pitch coordinates: normalized p = [x, y] in [-1, 1] x [-0.42, 0.42].
+Ball carrier: b = argmin_{i in I} || p_i - p_ball ||_2.
+Opponents: D = {d_1, ..., d_M}. Teammates: J = {j in I : j != b}.
+
+1. VECTOR PROJECTION PASS-LANE OCCLUSION (L_pass):
+   Let passing trajectory vector be v_pass = p_j - p_b.
+   For each defender d in D:
+     t_proj(d) = dot(p_d - p_b, v_pass) / (|| v_pass ||_2^2)
+     p_closest(d) = p_b + clip(t_proj(d), 0.0, 1.0) * v_pass
+     h_perp(d) = || p_d - p_closest(d) ||_2
+
+   Interception probability density follows a Gaussian dynamic corridor:
+     P_intercept(d; b, j) = exp( - (h_perp(d)^2) / (2 * sigma_d^2) ) * I(t_proj(d) in [0, 1])
+     sigma_d = 0.05 * (1.0 + || v_d ||_2 / v_max)
+
+   Pass lane openness:
+     L_pass(b, j) = 1.0 - max_{d in D} P_intercept(d; b, j)
+
+2. EDMS-INSPIRED SPACE SCORE S(j):
+   Formula:
+     S(j) = k1 * D_ball(j) + k2 * D_def(j) + k3 * L_pass(b, j)
+   Calibrated Weights:
+     k1 = -0.50 (distance to ball penalty)
+     k2 =  0.30 (separation from nearest defender reward)
+     k3 =  0.40 (open passing corridor reward)
+   Normalized Distances:
+     D_ball(j) = || p_j - p_b ||_2 / D_max
+     D_def(j)  = min_{d in D} || p_j - p_d ||_2 / D_safe  (D_safe = 0.20)
+
+3. TIME-TO-REACH (TTR) & PITCH CONTROL:
+   TTR(k, x) = t_react + (|| p_k - x ||_2) / v_max
+   PC_team(x) = sigmoid( lambda_TTR * ( min_{d in D} TTR(d, x) - min_{j in I} TTR(j, x) ) )
+
+4. SHOT VIABILITY SCORE:
+   Let goal posts be g_left = [1.0, -0.044], g_right = [1.0, 0.044].
+   theta_goal(j) = arccos( dot(g_left - p_j, g_right - p_j) / (||g_left - p_j|| * ||g_right - p_j||) )
+   Shot_Score(j) = max(0, theta_goal(j) - phi_gk(j)) * exp( - alpha_shot * || p_goal - p_j ||_2 )
+
+--------------------------------------------------------------------------------
+3.3 TACTICAL VALUATION ENGINE (OBV & SPATIAL VALUE SURFACE)
+--------------------------------------------------------------------------------
+1. Expected Threat (xT) / On-Ball Value Grid (16 x 12 cells):
+   V(u, v) = s(u, v) * g(u, v) + (1 - s(u, v)) * sum_{u', v'} T((u', v') | (u, v)) * V(u', v')
+2. Action Progression Delta-OBV:
+   Delta_OBV(t) = clip( V(cell(p_{t+1})) - V(cell(p_t)), -0.5, 0.5 )
+
+--------------------------------------------------------------------------------
+3.4 MULTI-COMPONENT COMPOSITE REWARD FORMULATION & PBRS INVARIANCE
+--------------------------------------------------------------------------------
+Per-step reward signal:
+  R_total(t) = w_sparse * r_sparse(t) + w_obv * Delta_OBV(t) + w_space * r_space(t) + w_disrupt * r_disrupt(t)
+
+Normalized Weights:
+  w_sparse = 1.00, w_obv = 0.20, w_space = 0.15, w_disrupt = 0.10.
+
+POTENTIAL-BASED REWARD SHAPING (PBRS) THEOREM:
+  Expressing shaped rewards as potential differences:
+    F(s, s') = gamma * Phi(s') - Phi(s)
+  guarantees that the optimal policy pi* under shaped reward is identical to 
+  the optimal policy under sparse environment reward (Ng, Harada, & Russell, 1999).
+
+--------------------------------------------------------------------------------
+3.5 FORMAL ALGORITHMS (PSEUDOCODE: FEATURES, REWARD, MAPPO)
+--------------------------------------------------------------------------------
+
+ALGORITHM 1: Vectorized Semantic State Feature Construction
+--------------------------------------------------------------------------------
+Input:  Positions P_att in R^{N x 2}, P_def in R^{M x 2}, p_ball in R^2, Velocities V_att, V_def.
+Output: F_sem in R^{N x d_feat}.
+
+1: b <- argmin_i || P_att[i] - p_ball ||_2
+2: D_ball <- || P_att - P_att[b] ||_2 / D_max
+3: D_def <- min_{cols}( cdist(P_att, P_def) ) / D_safe
+4: V_pass <- P_att - P_att[b]
+5: Diff_def <- P_def[:, None, :] - P_att[b]
+6: Proj <- sum(Diff_def * V_pass, axis=2) / (sum(V_pass^2, axis=1) + 1e-6)
+7: H_perp <- || P_def[:, :, None] - (P_att[b] + clip(Proj, 0, 1)[:, :, None] * V_pass) ||_2
+8: P_intercept <- exp(- (H_perp^2) / (2 * sigma_d^2)) * (Proj >= 0) * (Proj <= 1)
+9: L_pass <- 1.0 - max_{rows}(P_intercept)
+10: Space_Score <- k1 * D_ball + k2 * D_def + k3 * L_pass
+11: TTR_att <- t_react + || P_att - P_goal ||_2 / v_max
+12: Shot_Score <- ComputeShotViability(P_att, P_def[0])
+13: return Stack([Space_Score, D_def, L_pass, TTR_att, Shot_Score], axis=-1)
+
+ALGORITHM 2: Multi-Component Tactical Reward Engine
+--------------------------------------------------------------------------------
+Input:  State s_t, joint action a_t, next state s_{t+1}, value surface V_xT.
+Output: Scalar reward r_total.
+
+1: r_sparse <- +1.0 if goal_scored else (-1.0 if goal_conceded else 0.0)
+2: delta_obv <- clip(V_xT[Discretize(s_{t+1}.ball)] - V_xT[Discretize(s_t.ball)], -0.5, 0.5)
+3: delta_space <- sum_{j != b} max(0.0, SpaceScore(s_{t+1}, j) - SpaceScore(s_t, j))
+4: r_disrupt <- mean( || s_{t+1}.def_pos - s_t.def_pos ||_2 )
+5: return w_sparse * r_sparse + w_obv * delta_obv + w_space * delta_space + w_disrupt * r_disrupt
+
+ALGORITHM 3: MAPPO Optimization Loop with Tactical State & Reward
+--------------------------------------------------------------------------------
+Input:  Parallel Envs (K), Policy pi_theta, Centralized Critic V_phi.
+Hyperparameters: T = 512, Epochs E = 4, Batch B = 64, lr = 3e-4, eps = 0.2.
+
+1: for iteration = 1 to Total_Iterations do
+2:    Collect trajectories:
+3:       For step = 1 to T across K envs:
+4:          F_sem <- Algorithm1(s_global)
+5:          o_aug <- [o_raw, F_sem]
+6:          a_t ~ pi_theta( . | o_aug ), v_t <- V_phi(s_global)
+7:          s_{t+1}, raw_r, done <- env.step(a_t)
+8:          r_tactical <- Algorithm2(s_t, a_t, s_{t+1})
+9:          Store transition in buffer D
+10:   Compute GAE Advantages A_t and Returns R_target_t
+11:   Normalize A_hat_t <- (A_t - mean(A)) / (std(A) + 1e-8)
+12:   for epoch = 1 to E do
+13:      for minibatch in Sample(D, batch_size=B) do
+14:         L_clip <- - mean( min( r(theta)*A_hat, clip(r(theta), 1-eps, 1+eps)*A_hat ) )
+15:         L_value <- 0.5 * mean( max( (V_phi - R_target)^2, (V_clipped - R_target)^2 ) )
+16:         L_entropy <- - mean( Entropy(pi_theta) )
+17:         Update theta, phi via Adam on (L_clip + c1*L_value - c2*L_entropy)
+18:      end for
+19:   end for
+20: end for
+
+--------------------------------------------------------------------------------
+3.6 COMPUTATIONAL TIME & SPACE COMPLEXITY ANALYSIS
+--------------------------------------------------------------------------------
+[A] TIME COMPLEXITY (PER STEP):
+  - Semantic feature computation: O(N * M) where N = attacking agents, M = defenders.
+    Academy 3v1: N = 3, M = 2 => 6 operations (< 0.02 ms).
+    Full 11v11:  N = 10, M = 11 => 110 operations (< 0.15 ms in NumPy).
+  - OBV / xT Grid lookup: O(1).
+  - Overhead: Feature calculations add < 3% execution time to GRF physics loop.
+
+[B] SPACE COMPLEXITY:
+  - Observation feature tensor: O(N * d_feat) with d_feat = 5 scalars (negligible).
+  - MAPPO Rollout Buffer: O(K * T * (N * D_obs + D_state)) ~= 10.8 MB for K=16, T=512.
+  - VRAM footprint: Requires < 1.0 GB GPU VRAM.
+
+[C] COMPUTATIONAL SCALING ESTIMATES (1x RTX 3060/4070 GPU):
+  - Academy 3v1 (3M steps): ~2.2 hours / seed.
+  - Academy Pass&Shoot (4M steps): ~2.8 hours / seed.
+  - Academy Counterattack (8M steps): ~5.5 hours / seed.
+  - Full 11v11 Match (25M steps): ~28 hours / seed.
+
+================================================================================
+4. EXPERIMENTAL DESIGN & ABLATION REGIME
+================================================================================
+To satisfy publication review standards, a complete 2 x 2 factorial design 
+must be executed across all test seeds:
+
++---------------+--------------------------------+------------------------------+
+| Model ID      | State Representation           | Reward Architecture          |
++---------------+--------------------------------+------------------------------+
+| M1 (Control)  | Raw [x, y, vx, vy] vector      | Pure Sparse (Goal only)      |
+| M2 (State)    | Semantic (EDMS + TTR + Shot)   | Pure Sparse (Goal only)      |
+| M3 (Reward)   | Raw [x, y, vx, vy] vector      | Multi-Component Tactical     |
+| M4 (Full/Our) | Semantic (EDMS + TTR + Shot)   | Multi-Component Tactical     |
++---------------+--------------------------------+------------------------------+
+
+Causal Inferences Provided by the Matrix:
+  - Comparing M2 vs M1: Isolates the pure representation benefit of semantic features.
+  - Comparing M3 vs M1: Isolates the effect of tactical reward shaping on raw inputs.
+  - Comparing M4 vs (M2, M3): Establishes whether synergy exists between semantic 
+    perceptions and tactical incentives.
+
+================================================================================
+5. STEP-BY-STEP IMPLEMENTATION ROADMAP (WORKFLOW)
+================================================================================
+
+STAGE 1: ENVIRONMENT & ENGINE VERIFICATION (Days 1–2)
+  1.1 Install GRF inside WSL2 / Linux:
+      sudo apt-get install git cmake build-essential libgl1-mesa-dev libsdl2-dev
+      pip install gfootball
+  1.2 Write environment health check script (`tests/test_env.py`).
+  1.3 Verify head-to-head simulation stepping at >= 500 FPS in headless mode.
+
+STAGE 2: SEMANTIC FEATURE WRAPPER (`envs/semantic_wrapper.py`) (Days 3–4)
+  2.1 Implement vectorized NumPy functions for Space Score S(j), TTR, and Pass-Lane clearance.
+  2.2 Wrap the standard GRF observation space into a Dict or Box space containing:
+      - `raw_obs`: Standard GRF tensor.
+      - `semantic_obs`: Array of [S(j), TTR(j), Shot_Score(j), Pass_Openness(j)].
+  2.3 Unit-test computation latency (< 0.2 ms per step overhead).
+
+STAGE 3: TACTICAL REWARD ENGINE (`envs/tactical_reward.py`) (Days 5–6)
+  3.1 Load pre-calibrated xT (Expected Threat) grid matrix (16x12).
+  3.2 Implement delta tracker for active ball possession.
+  3.3 Implement off-ball teammate run tracker (calculating S_t - S_{t-1}).
+  3.4 Integrate RunningMeanStd normalization wrapper to stabilize reward scale.
+
+STAGE 4: RL TRAINING RIG & REPRODUCIBILITY (Days 7–12)
+  4.1 Implement / configure MAPPO (Multi-Agent PPO) in PyTorch.
+  4.2 Hyperparameters:
+      - Horizon (n_steps): 512
+      - Batch Size: 64
+      - Epochs: 4
+      - GAE Lambda: 0.95, Discount Gamma: 0.993
+      - Learning Rate: 3e-4 (linear decay)
+      - Entropy Coefficient: 0.01
+      - Clip Range: 0.2
+  4.3 Execute 5 independent runs per model (Seeds: 42, 101, 2024, 7, 888) over 5M steps.
+
+STAGE 5: BENCHMARKING & STATISTICAL ANALYSIS (Days 13–16)
+  5.1 Freeze model weights at convergence.
+  5.2 Run 1,000 deterministic evaluation episodes per seed against built-in GRF bots.
+  5.3 Log and aggregate metrics into publication-ready CSVs and LaTeX tables.
+
+================================================================================
+6. STATISTICAL EVALUATION & PUBLICATION BENCHMARKS
+================================================================================
+
+EVALUATION METRIC DEFINITIONS:
+
+1. TACTICAL PHASE CLASSIFICATION ACCURACY (TPCA):
+   - Measure: Classification f1-score of agent policy states matching 
+     canonical match phases (Build-up, Penetration, Rest-Defense).
+   - Benchmark: > 89.0% (Comparable to TACT-RLNet standard).
+
+2. OFF-BALL MOVEMENT QUALITY (OBMQ):
+   - Measure: Mean rate of successful space generation during off-ball phases:
+     OBMQ = (1 / T) * sum_{t} [ S_t(off_ball_player) / max_possible_S ]
+   - Benchmark: 0.85 - 0.92.
+
+3. DECISION COHERENCE (COHEN'S KAPPA / RULE ACCORDANCE):
+   - Measure: Agreement metric between agent passing decisions and tactical expert 
+     coaching rules (e.g., passing to player with highest Space Score vs. forcing into cover).
+   - Benchmark: Cohen's kappa >= 0.70.
+
+4. GAME CONTEXT RISK MODULATION (GIRL-GNN PROTOCOL):
+   - Evaluate agent actions under simulated scorelines:
+     * Condition A (Trailing by 1): Measure through-ball & high-risk pass frequency (Target: 30-40%).
+     * Condition B (Leading by 1): Measure ball retention & low-risk pass frequency (Target: <= 18%).
+   - Demonstrates that the policy learned true contextual soccer strategy rather 
+     than static shortcut heuristics.
+
+5. STATISTICAL REPORTING:
+   - Always report: Mean +/- Standard Deviation across all 5 seeds.
+   - P-values via Welch's unequal variances t-test (threshold p < 0.01).
+   - Effect Size via Cohen's d (target: d > 1.2 indicating very large effect).
+
+================================================================================
+7. RISK MITIGATION & COMMON RL PITFALLS
+================================================================================
+
+[!] PITFALL 1: Reward Hacking via Space Farming
+    - Risk: Off-ball agents learn to vibrate back and forth near an open space 
+      to perpetually collect r_space without helping the ball carrier.
+    - Mitigation: Condition r_space on forward progression or proximity to the ball, 
+      and clamp total off-ball rewards to a max cap per possession.
+
+[!] PITFALL 2: Sparse Reward Starvation
+    - Risk: Baseline agent fails to ever score a goal in early exploration, 
+      yielding flat zero-gradient learning.
+    - Mitigation: Use Academy drills (`3_vs_1` / `pass_and_shoot`) where initial 
+      random actions stumble into goals within 50,000 steps.
+
+[!] PITFALL 3: Observation Latency Bottlenecks
+    - Risk: Complex Euclidean math in pure Python slows down environment steps.
+    - Mitigation: Vectorize all calculations using NumPy matrix broadcasting 
+      or PyTorch tensors directly on the GPU.
+
+================================================================================
+8. REPOSITORY DIRECTORY LAYOUT & ARTIFACT SPEC
+================================================================================
+
+c:/Reinforcement Learning of Sports/
+├── configs/
+│   ├── base_params.yaml          # PPO learning rates, batch sizes, seeds
+│   ├── env_academy_3v1.yaml      # Academy 3v1 scenario parameters
+│   └── ablation_matrix.yaml      # Model configs (M1, M2, M3, M4)
+├── envs/
+│   ├── __init__.py
+│   ├── grf_interface.py          # Google Research Football wrapper
+│   ├── semantic_features.py      # Vectorized EDMS Space Score, TTR, Pass Lane
+│   └── reward_engine.py          # xT / OBV surface, space creation reward
+├── models/
+│   ├── __init__.py
+│   ├── actor_critic.py           # Shared backbone + Actor & Critic heads
+│   └── feature_encoder.py        # Semantic feature normalization layer
+├── evaluation/
+│   ├── __init__.py
+│   ├── tactical_evaluator.py     # TPCA, OBMQ, Decision Coherence calculators
+│   ├── statistical_suite.py      # Welch t-test, Cohen's d, CI generator
+│   └── plot_generator.py         # Pitch control heatmaps & learning curves
+├── scripts/
+│   ├── run_all_ablations.sh      # Orchestration script for full multi-seed suite
+│   └── test_environment.py       # Sanity check for GRF and rendering
+├── data/
+│   └── xt_grid_16x12.npy         # Calibrated Expected Threat / OBV grid
+├── train.py                      # Core training script with W&B logging
+├── evaluate.py                   # Checkpoint evaluation script
+└── requirements.txt              # Pinned dependencies (torch, gfootball, etc.)
+================================================================================
