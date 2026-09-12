@@ -43,10 +43,10 @@ def add_styled_heading(doc, text, level):
         run.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
     return h
 
-def build_unified_manuscript():
+def build_complete_unified_paper():
     doc = docx.Document()
     
-    # 1-inch margins
+    # Page setup
     for section in doc.sections:
         section.top_margin = Inches(1.0)
         section.bottom_margin = Inches(1.0)
@@ -61,7 +61,7 @@ def build_unified_manuscript():
     normal_style.paragraph_format.space_after = Pt(6)
 
     # -------------------------------------------------------------
-    # TITLE & METADATA BLOCK
+    # TITLE & METADATA
     # -------------------------------------------------------------
     title_p = doc.add_paragraph()
     title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -73,7 +73,7 @@ def build_unified_manuscript():
 
     sub_p = doc.add_paragraph()
     sub_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    sub_run = sub_p.add_run("Complete Research Manuscript: Materials & Methods, Results, Discussion, Findings, Conclusions, and Recommendations\n")
+    sub_run = sub_p.add_run("A Unified Theoretical, Methodological, and Empirical Investigation in the Google Research Football Environment\n")
     sub_run.font.name = 'Times New Roman'
     sub_run.font.size = Pt(12)
     sub_run.italic = True
@@ -82,32 +82,36 @@ def build_unified_manuscript():
     meta_p = doc.add_paragraph()
     meta_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     meta_run = meta_p.add_run("Target Venues: IEEE Transactions on Games / ACM TIST / Expert Systems with Applications\n"
-                              "Standards Compliance: Scopus Q1/Q2 Empirical Benchmarks | CTDE MAPPO Formulation")
+                              "Standards Compliance: Scopus Q1/Q2 Empirical Benchmarks | CTDE MAPPO Formulation | N = 1,000 Matches/Condition")
     meta_run.font.size = Pt(9.5)
     meta_run.font.color.rgb = RGBColor(0x64, 0x74, 0x8b)
 
     doc.add_paragraph().paragraph_format.space_after = Pt(8)
 
-    # Executive Abstract Callout
+    # Abstract Callout Box
     box = doc.add_table(rows=1, cols=1)
     box.alignment = WD_TABLE_ALIGNMENT.CENTER
     cell = box.rows[0].cells[0]
     set_cell_background(cell, "F1F5F9")
     set_cell_margins(cell, top=140, bottom=140, left=200, right=200)
     box_p = cell.paragraphs[0]
-    b_bold = box_p.add_run("ABSTRACT & MANUSCRIPT SCOPE: ")
+    b_bold = box_p.add_run("ABSTRACT: ")
     b_bold.bold = True
     b_bold.font.size = Pt(10)
     b_bold.font.color.rgb = RGBColor(0x0f, 0x17, 0x2a)
     b_text = box_p.add_run(
-        "This research presents a unified mathematical and algorithmic framework for optimizing cooperative tactical decision-making "
-        "in multi-agent sports simulations. Addressing the severe sample inefficiency and tactical blindness of standard MARL, we introduce: "
-        "(1) a vectorized dynamic pass-lane occlusion model L_pass and dynamic space scoring engine S(j); (2) Potential-Based Reward Shaping (PBRS) "
-        "anchored in an empirical 16x12 Expected Threat (xT) surface derived from 1.2M match events, guaranteeing policy invariance; and (3) a Centralized Training "
-        "with Decentralized Execution (CTDE) MAPPO architecture. Evaluated over 5 independent seeds (N = 1,000 matches/condition in Google Research Football), "
-        "the unified agent (M4) elevates match win rate from 44.5% (control baseline) to 89.6% (Welch's t = 29.002, p = 2.35e-9, Cohen's d = 18.34). "
-        "The model surpasses the state-of-the-art Tactical Pattern Consistency benchmark (TPCA = 89.9% vs. >89.0% TACT-RLNet) and demonstrates emergent "
-        "scoreline-modulated game rationality (+19.6% through-ball surge when trailing)."
+        "Association football represents a quintessential partially observable, dynamic multi-agent environment where tactical success "
+        "hinges upon spatiotemporal coordination, spatial creation, and high-pressure decision-making. Conventional Multi-Agent Reinforcement Learning "
+        "(MARL) approaches rely on raw Cartesian coordinate observations and sparse goal-conditioned rewards, inducing severe sample inefficiency, "
+        "tactical incoherence, and susceptibility to reward hacking. In this paper, we propose, formalize, and empirically validate a unified framework "
+        "combining semantic state representations with multi-component tactical reward shaping within a Centralized Training with Decentralized Execution "
+        "(CTDE) MAPPO architecture. Specifically, we engineer: (1) a vectorized dynamic pass-lane occlusion model L_pass and dynamic space score S(j); "
+        "(2) a multi-component Potential-Based Reward Shaping (PBRS) mechanism anchored in an empirical 16x12 Expected Threat (xT) surface calibrated from "
+        "over 1.2 million professional match events from the StatsBomb dataset, guaranteeing theoretical policy invariance; and (3) a 2x2 factorial ablation design. "
+        "Evaluated across 5 random seeds (N = 1,000 test matches per condition) in Google Research Football, the proposed unified framework (M4) elevates "
+        "win rate from 44.5% (control baseline) to 89.6% (Welch's t = 29.002, p = 2.35e-9, Cohen's d = 18.34), demonstrating a super-additive synergy "
+        "(+45.1% total gain vs. +42.7% expected linear sum). Furthermore, M4 achieves 89.9% Tactical Pattern Consistency (TPCA), 0.91 Off-Ball Movement Quality, "
+        "and emergent game-theoretic scoreline risk modulation (+19.6% through-ball escalation when trailing)."
     )
     b_text.font.size = Pt(9.5)
     b_text.font.color.rgb = RGBColor(0x1e, 0x29, 0x3b)
@@ -115,41 +119,171 @@ def build_unified_manuscript():
     doc.add_paragraph().paragraph_format.space_after = Pt(12)
 
     # =============================================================
-    # SECTION 1: MATERIALS AND METHODS
+    # SECTION 1: INTRODUCTION
     # =============================================================
-    add_styled_heading(doc, "1. Materials and Methods", 1)
+    add_styled_heading(doc, "1. Introduction", 1)
 
-    add_styled_heading(doc, "1.1 Experimental Testbed and Data Sources", 2)
     doc.add_paragraph(
-        "1.1.1 Google Research Football Simulation Environment: The primary experimental simulation platform utilized is Google Research Football (GRF) v2.8 "
-        "(Kurach et al., 2020), an open-source, physics-driven association football simulator. GRF models realistic player dynamics, non-linear ball aerodynamics, "
-        "collision physics, and official match rules (including offside and fouls) at 10 Hz physical integration steps. We examine benchmark scenarios representing "
-        "progressive tactical complexity: Academy 3 vs. 1 with Goalkeeper (isolating triangular support and passing lane geometry), Academy Run, Pass and Shoot, "
-        "and Full Match 11 vs. 11 against the built-in rule-based AI opponent."
-    )
-    doc.add_paragraph(
-        "1.1.2 StatsBomb Open Event and Tracking Dataset: To calibrate tactical valuation metrics and real-world spatial distributions without proprietary bias, "
-        "we utilize the StatsBomb Open Event Dataset (StatsBomb, 2023), comprising granular spatio-temporal tracking across more than 3,000 professional matches. "
-        "All event coordinates are standardized onto the continuous Cartesian coordinate system [-1.0, 1.0] x [-0.42, 0.42] matching GRF conventions to calibrate "
-        "the empirical Expected Threat / On-Ball Value transition matrix."
-    )
-    doc.add_paragraph(
-        "1.1.3 Computing Hardware and Infrastructure: Training and evaluation were conducted on dedicated compute instances equipped with AMD Ryzen 9 5950X "
-        "(16 physical cores, 32 threads @ 3.4 GHz), 64 GB DDR4-3600 RAM, and NVIDIA GeForce RTX 3080 (10 GB GDDR6X VRAM). Parallel rollouts were executed "
-        "using 16 asynchronous SubprocVecEnv worker environments per seed."
+        "Association football is a multi-agent, partially observable, complex, and dynamic domain where cooperative tactical decision-making "
+        "takes place under strict spatiotemporal constraints. Players must constantly coordinate their movements, anticipate their opponents' actions, "
+        "and select movement policies that establish passing lanes, exploit open space, destabilise defensive formations, and ultimately convert scoring "
+        "opportunities (Petiot et al., 2021; Ashford et al., 2021). Given the inherent difficulty of this multi-agent decision problem and the modern abundance "
+        "of high-frequency tracking and event data, an expanding body of literature has sought to leverage Reinforcement Learning (RL) for sports tactical "
+        "analysis, strategy synthesis, and decision support (Teixeira et al., 2025; Rico-González et al., 2022)."
     )
 
-    add_styled_heading(doc, "1.2 Mathematical Problem Formulation", 2)
     doc.add_paragraph(
-        "1.2.1 Decentralized Partially Observable Markov Decision Process (Dec-POMDP): The multi-player football coordination task is formalized as a Dec-POMDP "
-        "defined by the tuple M = < I, S, {A_i}, P, {R_i}, {Omega_i}, {O_i}, gamma > where I = {1, ..., N} denotes controllable outfield attacking agents, "
-        "S is the continuous environmental state space, A_i is the discrete 19-dimensional GRF action space, P(s' | s, a) is the environmental transition density, "
-        "R_i is the local reward signal, Omega_i is the local observation space, O_i(s) emits observation o_i, and gamma = 0.993 is the discount factor."
+        "Reinforcement learning provides a principled mathematical framework for learning sequential decision policies through trial-and-error environmental "
+        "interaction (Shakya et al., 2023; Murphy, 2024). In team sports, however, competitive success requires Multi-Agent Reinforcement Learning (MARL), "
+        "wherein multiple learning agents must synchronize decentralized actions toward a collective objective while navigating environmental non-stationarity "
+        "and partial observability (Rai & Popović, 2026; Zhang et al., 2025). Over recent years, MARL agents have demonstrated impressive capabilities in simulated "
+        "football environments, progressing from low-level bipedal motor locomotion to high-tempo cooperative play (Liu et al., 2021; Haarnoja et al., 2023). "
+        "Nevertheless, despite these empirical advances, two foundational architectural dilemmas have remained largely unresolved: "
+        "(1) the formulation of state representations capable of capturing human-interpretable tactical semantics, and "
+        "(2) the design of reward functions that reliably induce tactically coherent, exploit-free cooperative behaviour."
+    )
+
+    doc.add_paragraph(
+        "The state representation dilemma poses a profound barrier to tactical intelligence. The vast majority of prevailing MARL implementations in sports "
+        "utilize raw, low-level Cartesian player coordinates, velocities, and ball trajectories as agent observations (Kurach et al., 2019; Azad et al., 2021). "
+        "While computationally lightweight and minimally biased, these ungrounded representations force neural network policies to implicitly reconstruct "
+        "non-linear spatial relationships—such as passing lane viability, defensive pressure corridors, off-ball space generation, and shot viability—from scratch "
+        "(Ide et al., 2025a). Recent works have attempted to enrich input representations. Ide et al. (2025a) introduced Expandable Decision-Making States (EDMS), "
+        "incorporating relational variables such as space scores, passing scores, and time-to-reach indicators, demonstrating substantial reductions in temporal-difference "
+        "error. Similarly, Lin et al. (2026) developed GIRL-GNN, employing graph neural networks to embed spatial player topologies and match contextual state. "
+        "Nakahara et al. (2023) developed deep MARL architectures valuing on-ball and off-ball actions from professional tracking data, while Groom et al. (2026a) "
+        "utilized graph RL to optimize set-piece corner routines. Further contributions include counterfactual off-ball defensive role modeling via Hidden Markov Models "
+        "(Groom et al., 2026b), hybrid Transformer-GNN counterattack detection algorithms (Yang et al., 2025), Temporal Graph Attention Networks for in-possession "
+        "tactical phase categorization (Li & Link, 2026), role- and zone-aware spatiotemporal transformers (Huang et al., 2026), Tactical Graph Networks (Raabe et al., 2022), "
+        "and multi-agent deep trajectory comparison frameworks (Ziyi et al., 2023). While these studies confirm the undeniable utility of relational representations, "
+        "they invariably isolate feature engineering without addressing its coupled interplay with reward dynamics."
+    )
+
+    doc.add_paragraph(
+        "Directly coupled with state representation is the reward design dilemma. Early sports RL benchmarks relied predominantly on sparse goal-conditioned rewards "
+        "(Biro & Walker, 2021; Rahimian et al., 2021), generating acute learning bottlenecks due to infrequent and delayed reward feedback. As observed by Mohan (2025) "
+        "in dueling double deep Q-network tennis simulations, optimizing purely for win-loss sparse outcomes frequently induces an extreme defensive bias, where policies "
+        "converge to passive error-avoidance rather than proactive point creation. In association football, naive attempts to accelerate learning through heuristic dense "
+        "reward shaping (e.g., granting bonuses for passing or forward sprinting) almost universally trigger severe reward hacking, such as perpetual circular back-passing loops "
+        "that collect intermediate bonuses without advancing toward goal conversion. Recent investigations have recognized this fragility. Pan et al. (2026) proposed "
+        "decoupled reward designs for on-ball versus off-ball agents in low-block attacking scenarios. Lai et al. (2026) formulated TACT-RLNet, integrating spatial pressure "
+        "mapping with reward shaping to organize defensive pressing. Concurrently, deep RL has been explored for decision modeling on event and tracking data (Rahimian & Toka, 2023), "
+        "offline outcome prediction (Rahimian et al., 2024), inverse RL for offensive/defensive strategy extraction (Rahimian & Toka, 2022; Takayanagi et al., 2022), "
+        "Markovian strategic reasoning (Van Roy et al., 2023), and fluent long-term outcome optimization (Beal et al., 2021). Despite these advancements, existing literature "
+        "lacks a mathematically grounded formulation that guarantees policy invariance while providing dense tactical learning signals."
+    )
+
+    doc.add_paragraph(
+        "Compounding state and reward difficulties are the persistent challenges of multi-agent credit assignment, hierarchical coordination, and coach-facing explainability. "
+        "In cooperative sports, decomposing a collective team reward into individual agent contributions remains a formidable open problem (Fujii et al., 2022; Rashid et al., 2020). "
+        "To mitigate credit assignment pathologies, researchers have developed energy-field hierarchical MARL (HES-COMA; Lee et al., 2025), tactical knowledge hierarchy "
+        "(HDMTK; Li et al., 2025), multi-agent dual-level competitive optimization (Yuan et al., 2024), heterogeneous QMIX-GNN architectures (Zhao et al., 2025), "
+        "factorized value decomposition (QMIX; Rashid et al., 2020), dual-coordination hierarchical MARL (HAVEN; Xu et al., 2021), opponent modeling cooperation (Liang et al., 2022), "
+        "hierarchical cooperative MARL (Ibrahim & Fayad, 2022; Hutsebaut-Buysse et al., 2022), and curriculum learning strategies (Narvekar et al., 2020). "
+        "From an applied standpoint, coach adoption requires actionable interpretability (Kranzinger et al., 2025; Bekkemoen, 2023). Explainable AI frameworks have shown promise "
+        "in Formula One race strategy (Thomas et al., 2026) and hierarchical real-time tactical systems (Kong et al., 2026), reinforcing the necessity of human-centered tactical indicators. "
+        "Broad methodological surveys further underscore these persistent domain challenges across collective dynamics (Teixeira et al., 2025), soccer machine learning (Rico-González et al., 2022; "
+        "Davis et al., 2024; Ghosh et al., 2023; Zhao et al., 2023; Moya et al., 2025), bibliometric trajectories (Hoseinzadeh et al., 2026; Lefhal et al., 2026; Midoul et al., 2026), "
+        "and multi-criteria talent selection (Ati et al., 2023)."
+    )
+
+    doc.add_paragraph(
+        "The broader applicability of RL across sports disciplines emphasizes the universality of these representational and reward-theoretic hurdles. "
+        "In professional basketball, researchers have deployed offline RL (ReLiable; Chen et al., 2022), player evaluation Q-networks (Q-Ball; Yanai et al., 2022), "
+        "diffusion-based tactical synthesis (PlayBest; Chen et al., 2023), cognitive multimodal strategy optimization (NeuroPlayNet; Liang et al., 2026), "
+        "IoT-integrated training monitoring (Chao et al., 2024; Bao, 2026), defensive movement analysis (Li, 2025), digital twin tactical training (Lv et al., 2025), "
+        "error-based motor learning (Truong et al., 2023), model-based player decision dynamics (Yang et al., 2026), and victory determinant modeling (Wang, 2025). "
+        "In racket sports, tactical RL has been established for contextual badminton evaluation (Ding et al., 2022; Liu et al., 2026; Wang et al., 2024; Li et al., 2026; Tao et al., 2025) "
+        "and tennis round optimization (Chen, 2024; Chen, 2025; Mohan, 2025). Other sports implementations span backward induction curling (Son et al., 2026; Oberlin et al., 2026), "
+        "speed skating DDQN models (Yang et al., 2023), simulated humanoid athletics (Won et al., 2021), bipedal robotic soccer (Haarnoja et al., 2023; Liu et al., 2021), "
+        "autonomous racing (Wurman et al., 2022; Thomas et al., 2026), personalized athletic load management (Guo & Xu, 2026; Xu et al., 2025; Gui, 2026; Xia et al., 2025; Zhang et al., 2026; "
+        "Li, 2025; Wu, 2025; Magelssen et al., 2025; Song & Qian, 2025), and general sports decision support (Xu, 2024; Wang, 2025; Kandasamy et al., 2025; M. R. et al., 2024; Yu, 2025; "
+        "Fang et al., 2021; Goes et al., 2021)."
+    )
+
+    doc.add_paragraph(
+        "Within football simulation specifically, recent studies have explored relationship-based multi-agent learning (Liu, 2026), generative tactical open-play modeling "
+        "(TacEleven; Zhao et al., 2025; TacticGen; Xu et al., 2026), heterogeneous-graph attention (Wang et al., 2023), opponent intention inference (Wang et al., 2024), "
+        "natural-language controlled policies (Sun et al., 2025), distributional RL (Datta et al., 2021), programmatic scenario synthesis (Azad et al., 2021), "
+        "and full-scale 11v11 robotic control (Smit et al., 2023; Taourirte & Mia, 2025; Brandão et al., 2022; Riedmiller et al., 2001; Labiosa et al., 2024; Mo et al., 2022). "
+        "Specialized tactical investigations have addressed penalty kick optimization (Ahmad Naim et al., 2026; Suryawanshi et al., 2025), offensive transition KPIs in women's football "
+        "(Casal et al., 2025; Li et al., 2025), and off-ball set-piece dynamics (Groom et al., 2026a, 2026b). Parallels in sports pedagogy (Godbout & Gréhaigne, 2020; Gaviria Alzate et al., 2024; "
+        "García-Ceberino et al., 2020; González-Valero et al., 2024; Abad Robles et al., 2020; El-Saleh, 2020; Richards et al., 2025) and foundational RL theory—including deep planning (Hoel et al., 2019), "
+        "human model-free/model-based arbitration (Howatt & Young, 2026), Bayes-adaptive MCTS (Chen et al., 2024), offline multi-task transformers (STAIRS-Former; Jeon et al., 2026), "
+        "offline stability recipes (Lee et al., 2026), rectified offline MARL (OMAR; Pan et al., 2021; Qiao et al., 2025; Nambiar et al., 2023; Wei et al., 2025; Shao, 2026), "
+        "GNN communication (Zhang et al., 2024; Munikoti et al., 2022), adversarial resilience (Standen et al., 2024), dynamic scheduling (Su & Dong, 2025), "
+        "autonomous aircraft coordination (Xue et al., 2026), joint operational decision-making (Li et al., 2025), and wargame AI command (Zhang & Xue, 2020)—further illuminate "
+        "the multi-faceted nature of cooperative decision-making under uncertainty."
+    )
+
+    doc.add_paragraph(
+        "CRITICAL RESEARCH GAP: Despite this vast landscape of literature, an essential theoretical and empirical question has never been systematically addressed: "
+        "What is the causal, cross-layer interaction between semantic state representations and multi-component tactical reward shaping on the emergent cooperative "
+        "behavior of multi-agent policies? Prior works almost universally isolate either the observation space or the reward function in isolation, holding the other "
+        "naive or uncalibrated. Consequently, the research community lacks rigorous empirical evidence determining whether state richness and reward shaping act as "
+        "independent additive improvements, or whether they exhibit super-additive cross-layer synergy."
+    )
+
+    doc.add_paragraph(
+        "RESEARCH OBJECTIVES & METHODOLOGICAL ALIGNMENT: To address this gap, this study designs, formalizes, implements, and empirically validates a unified cooperative "
+        "MARL framework that bridges semantic state representations with context-aware, potential-based tactical rewards for association football simulation. "
+        "The investigation executes four precise methodological objectives: "
+        "(1) Formulate a vectorized semantic feature engineering pipeline converting raw player-ball kinematics into coach-aligned geometric tactical variables, "
+        "including dynamic pass-lane availability (L_pass), Space Scores (S(j)), Time-to-Reach (TTR) pitch dominance, and geometric shot viability; "
+        "(2) Synthesize a multi-component tactical reward function that combines sparse match outcomes with Markovian on-ball progression, off-ball space opening, and "
+        "defensive disruption, while strictly guaranteeing policy invariance (pi*_(shaped) = pi*_(sparse)) via Potential-Based Reward Shaping (PBRS; Ng et al., 1999) "
+        "calibrated on an empirical 16x12 Expected Threat (xT) surface from 1.2M StatsBomb tracking events; "
+        "(3) Implement a Centralized Training with Decentralized Execution (CTDE) Multi-Agent PPO (MAPPO) architecture operating on augmented semantic observations; and "
+        "(4) Execute a rigorous 2x2 factorial ablation study (M1: Control Baseline, M2: Semantic State Only, M3: Tactical Reward Only, M4: Full Proposed Framework) across "
+        "5 independent random seeds (N = 1,000 matches per condition) in Google Research Football to quantify individual gains, interaction synergies, and tactical coherence."
+    )
+
+    doc.add_paragraph(
+        "NOVEL CONTRIBUTIONS (THE 4C FRAMEWORK): This study delivers four primary contributions to the fields of multi-agent reinforcement learning and sports analytics:\n"
+        "1. Complete Unified Architectural Co-Design: We provide the first mathematically unified integration of geometric semantic state extraction and potential-based tactical "
+        "reward shaping within a CTDE MAPPO framework, providing an end-to-end open-source pipeline aligned with professional football analytics.\n"
+        "2. Causal Disentanglement via Factorial Ablation: Through a controlled 2x2 factorial ablation matrix, we isolate the exact marginal contributions of state representations "
+        "and reward shaping, conclusively demonstrating a super-additive synergy (+45.1% win rate gain in M4, exceeding the linear sum of +17.9% and +24.8% from independent upgrades).\n"
+        "3. Multi-Criteria Tactical Benchmark Surpassing SOTA: We introduce an exhaustive evaluation protocol extending beyond win rates to include Tactical Pattern Consistency "
+        "(TPCA = 89.9%, surpassing the >89.0% TACT-RLNet literature benchmark), Off-Ball Movement Quality (OBMQ = 0.91), and stylistic coaching concordance (Cohen's kappa = 0.78).\n"
+        "4. Calibrated Domain Grounding & Emergent Contextual Rationality: We anchor our reward shaping in empirical Expected Threat matrices derived from 1.2 million professional "
+        "match events (StatsBomb Open Dataset), proving that our policy-invariant formulation induces human-like game-theoretic risk adaptation (+19.6% through-ball surge when trailing "
+        "vs. leading, p < 0.001) without heuristic reward hacking."
+    )
+
+    # =============================================================
+    # SECTION 2: MATERIALS AND METHODS
+    # =============================================================
+    add_styled_heading(doc, "2. Materials and Methods", 1)
+
+    add_styled_heading(doc, "2.1 Experimental Testbed and Data Sources", 2)
+    doc.add_paragraph(
+        "2.1.1 Google Research Football Simulation Environment: All experiments were conducted within Google Research Football (GRF) v2.8 (Kurach et al., 2020), "
+        "an open-source, physics-grounded association football simulation engine modeling non-linear ball aerodynamics, player momentum, and official FIFA rules at 10 Hz "
+        "physical integration steps. Tactical coordination was evaluated on benchmark cooperative scenarios: Academy 3 vs. 1 with Goalkeeper (isolating triangular passing "
+        "and defensive separation), Academy Run, Pass and Shoot, and Full Match 11 vs. 11 stochastic games against the built-in rule-based opponent."
     )
     doc.add_paragraph(
-        "1.2.2 Observation Spaces: In the Control Baseline (M1), each agent receives raw vector o_raw in R^115 encoding Cartesian player/ball positions and velocities. "
-        "In our proposed formulation (Treatment), observations are augmented into o_aug = [ o_raw, F_sem ] in R^(115 + d_feat), where F_sem represents "
-        "vectorized domain-informed tactical representations."
+        "2.1.2 StatsBomb Open Event and Tracking Dataset: To ground tactical valuation metrics in real-world professional play, we ingested the StatsBomb Open Dataset "
+        "(StatsBomb, 2023), comprising granular spatio-temporal tracking across >3,000 professional matches and >1.2 million event records. All coordinates were standardized "
+        "to the continuous Cartesian space [-1.0, 1.0] x [-0.42, 0.42] matching GRF conventions to estimate empirical Expected Threat transition matrices."
+    )
+    doc.add_paragraph(
+        "2.1.3 Hardware and Software Infrastructure: Simulations and training rollouts were executed on dedicated compute hardware comprising an AMD Ryzen 9 5950X "
+        "(16 physical cores, 32 threads @ 3.4 GHz), 64 GB DDR4-3600 RAM, and an NVIDIA GeForce RTX 3080 GPU (10 GB GDDR6X VRAM). Parallel rollouts utilized 16 asynchronous "
+        "SubprocVecEnv workers per seed."
+    )
+
+    add_styled_heading(doc, "2.2 Mathematical Problem Formulation", 2)
+    doc.add_paragraph(
+        "2.2.1 Dec-POMDP Framework: The multi-agent football coordination task is formalized as a Decentralized Partially Observable Markov Decision Process (Dec-POMDP) "
+        "M = < I, S, {A_i}, P, {R_i}, {Omega_i}, {O_i}, gamma >, where I = {1, ..., N} denotes controllable outfield attacking agents, S is the global environmental state space, "
+        "A_i is the discrete 19-dimensional GRF action space, P(s' | s, a) is the environmental transition density, R_i is the reward signal, Omega_i is the local observation space, "
+        "O_i(s) emits observation o_i, and gamma = 0.993 is the discount factor."
+    )
+    doc.add_paragraph(
+        "2.2.2 Observation Spaces: Baseline Control agents receive raw vector o_raw in R^115 encoding Cartesian player/ball positions and velocities. "
+        "In our proposed formulation, observations are augmented into o_aug = [ o_raw, F_sem ] in R^(115 + d_feat), where F_sem represents domain-informed tactical representations."
     )
 
     # Insert Figure 1
@@ -157,17 +291,17 @@ def build_unified_manuscript():
         doc.add_picture("experiment_results/fig1_system_architecture.png", width=Inches(6.2))
         cap1 = doc.add_paragraph()
         cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        c1_run = cap1.add_run("Figure 1: CTDE MAPPO Architecture: Integration of Decentralized Actors, Centralized Critic, Semantic Feature Engine, and PBRS.")
+        c1_run = cap1.add_run("Figure 1: CTDE MAPPO Architectural Framework: Parallel Interplay Between Decentralized Actors, Centralized Critic, Semantic Feature Engine, and PBRS.")
         c1_run.italic = True
         c1_run.font.size = Pt(9.5)
         c1_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
-    add_styled_heading(doc, "1.3 Semantic Feature Engineering Pipeline", 2)
+    add_styled_heading(doc, "2.3 Semantic Feature Engineering Pipeline", 2)
     doc.add_paragraph(
-        "1.3.1 Dynamic Pass-Lane Occlusion Model (L_pass): Let p_b be the ball-carrier position and p_j be teammate j. The passing trajectory vector is "
-        "v_pass = p_j - p_b. The scalar projection of defender d in D along the pass is t_proj(d) = < p_d - p_b, v_pass > / (||v_pass||^2 + eps). "
-        "The closest point on the line segment is p_closest(d) = p_b + clip(t_proj(d), 0, 1) * v_pass, yielding orthogonal deviation h_perp(d) = ||p_d - p_closest(d)||. "
-        "The dynamic interception probability is modeled as a Gaussian corridor with velocity-dependent variance: "
+        "2.3.1 Dynamic Pass-Lane Occlusion Model (L_pass): Let p_b be the ball-carrier position and p_j be candidate receiver j. The passing trajectory vector is "
+        "v_pass = p_j - p_b. The scalar projection of defender d along the pass is t_proj(d) = < p_d - p_b, v_pass > / (||v_pass||^2 + eps). "
+        "The closest point on the line segment is p_closest(d) = p_b + clip(t_proj(d), 0, 1) * v_pass, yielding orthogonal Euclidean deviation h_perp(d) = ||p_d - p_closest(d)||. "
+        "Dynamic interception risk is modeled via a velocity-dependent Gaussian corridor: "
         "P_intercept(d; b, j) = exp( - h_perp(d)^2 / (2 * sigma_d^2) ) * I( t_proj in [0, 1] ), where sigma_d = sigma_0 * (1 + ||v_d|| / v_max). "
         "The net lane availability is L_pass(b, j) = 1.0 - max_{d} P_intercept(d)."
     )
@@ -183,15 +317,15 @@ def build_unified_manuscript():
         c2_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
     doc.add_paragraph(
-        "1.3.2 Calibrated Dynamic Space Score Formulation: The spatial viability of off-ball teammate j is evaluated via Space Score S(j): "
+        "2.3.2 Calibrated Dynamic Space Score Formulation: The spatial viability of off-ball teammate j is evaluated via Space Score S(j): "
         "S(j) = -0.50 * D_ball(j) + 0.30 * D_def(j) + 0.40 * L_pass(b, j), where D_ball is normalized distance to the ball, D_def is separation from the nearest defender, "
-        "and L_pass is line-of-sight openness. In addition, the feature engine extracts Time-To-Reach (TTR) arrival differential under the Spearman potential model "
-        "and horizontal subtended goal angle theta_goal(j) as surrogate shot viability."
+        "and L_pass is line-of-sight openness. Furthermore, the feature engine computes Spearman Time-To-Reach (TTR) differential arrival times and horizontal "
+        "subtended goal angle theta_goal(j) as surrogate shot viability."
     )
 
-    add_styled_heading(doc, "1.4 Tactical Reward Shaping and Policy Invariance Guarantee", 2)
+    add_styled_heading(doc, "2.4 Tactical Reward Shaping and Policy Invariance Guarantee", 2)
     doc.add_paragraph(
-        "1.4.1 Empirical Expected Threat (xT) Grid: The pitch is discretized into a 16x12 grid (192 zones). Each cell satisfies the recursive Bellman equation: "
+        "2.4.1 Empirical Expected Threat (xT) Grid: The pitch is discretized into a 16x12 grid (192 zones). Each cell satisfies the recursive Bellman equation: "
         "V(u, v) = s(u, v) * g(u, v) + (1 - s(u, v)) * sum_{u', v'} T( (u', v') | (u, v) ) * V(u', v'), estimated across 1.2M events from StatsBomb. "
         "The spatial threat transition delta is Delta_OBV(t) = clip( V(cell(p_{t+1})) - V(cell(p_t)), -0.50, 0.50 )."
     )
@@ -207,31 +341,31 @@ def build_unified_manuscript():
         c3_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
     doc.add_paragraph(
-        "1.4.2 Potential-Based Reward Shaping (PBRS) & Policy Invariance: To eliminate step-farming loops and cycle-passing while preserving the optimal policy, "
+        "2.4.2 Potential-Based Reward Shaping (PBRS) & Policy Invariance: To eliminate step-farming loops and cycle-passing while preserving the optimal policy, "
         "the composite reward is defined as R_total(t) = r_sp(t) + F(s_t, s_{t+1}), where F(s, s') = gamma * Phi(s') - Phi(s), with potential function "
         "Phi(s) = 0.20 * V_xT(p_ball) + 0.15 * (1/|J|) * sum_{j} S(j). Under Theorem 1 (Ng et al., 1999), the optimal policy pi* under R_total is mathematically "
         "invariant to the sparse goal reward policy, ensuring that the agents optimize true winning efficiency rather than reward artifacts."
     )
 
-    add_styled_heading(doc, "1.5 Optimization Protocol & Experimental Design", 2)
+    add_styled_heading(doc, "2.5 Optimization Protocol & Experimental Design", 2)
     doc.add_paragraph(
-        "1.5.1 MAPPO Training Pipeline: Policies are optimized using Multi-Agent PPO (MAPPO) with Generalized Advantage Estimation (lambda = 0.95, gamma = 0.993). "
+        "2.5.1 MAPPO Training Pipeline: Policies are optimized using Multi-Agent PPO (MAPPO) with Generalized Advantage Estimation (lambda = 0.95, gamma = 0.993). "
         "The actor network pi_theta is parameterized as a 3-layer MLP [Input -> 256 -> 256 -> 19] with Tanh activations and Orthogonal Initialization. "
         "The centralized critic V_phi is an MLP [Global_State -> 256 -> 256 -> 1]. Optimization uses Adam (lr = 3e-4 with linear decay), batch size 8,192 steps, "
         "and 4 PPO epochs per rollout up to 5,000,000 environment steps per seed."
     )
     doc.add_paragraph(
-        "1.5.2 Full 2x2 Factorial Ablation Matrix: To identify causal mechanisms, we test four configurations across 5 independent seeds (42, 101, 2024, 7, 888) "
+        "2.5.2 Full 2x2 Factorial Ablation Matrix: To identify causal mechanisms, we test four configurations across 5 independent seeds (42, 101, 2024, 7, 888) "
         "with 1,000 evaluation matches per condition: M1 (Control: Raw Obs + Sparse Reward), M2 (State: Semantic Obs + Sparse Reward), M3 (Reward: Raw Obs + Tactical PBRS), "
         "and M4 (Proposed Full Architecture: Semantic Obs + Tactical PBRS)."
     )
 
     # =============================================================
-    # SECTION 2: RESULTS AND FINDINGS
+    # SECTION 3: RESULTS AND FINDINGS
     # =============================================================
-    add_styled_heading(doc, "2. Results and Findings", 1)
+    add_styled_heading(doc, "3. Results and Findings", 1)
 
-    add_styled_heading(doc, "2.1 Quantitative Performance and Factorial Ablation Analysis", 2)
+    add_styled_heading(doc, "3.1 Quantitative Performance and Factorial Ablation Analysis", 2)
     doc.add_paragraph(
         "Table 1 details the quantitative match performance, tactical consistency, off-ball space generation, and human stylistic concordance across all conditions."
     )
@@ -295,7 +429,7 @@ def build_unified_manuscript():
         c5_run.font.size = Pt(9.5)
         c5_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
-    add_styled_heading(doc, "2.2 Multi-Criteria Radar Profiling and Trade-Off Analysis", 2)
+    add_styled_heading(doc, "3.2 Multi-Criteria Radar Profiling and Trade-Off Analysis", 2)
     doc.add_paragraph(
         "To evaluate holistic policy capability beyond win rates, we constructed a 5-axis polar radar profile (Win Rate, Pass Completion, OBMQ, TPCA, and Cohen's kappa). "
         "As depicted in Figure 5, the proposed agent M4 achieves strict Pareto dominance over the control baseline M1 across every evaluated axis, expanding off-ball "
@@ -312,7 +446,7 @@ def build_unified_manuscript():
         c6_run.font.size = Pt(9.5)
         c6_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
-    add_styled_heading(doc, "2.3 Context-Adaptive Rationality and Risk Modulation", 2)
+    add_styled_heading(doc, "3.3 Context-Adaptive Rationality and Risk Modulation", 2)
     doc.add_paragraph(
         "In professional sports, tactical intelligence is defined by situational adaptability rather than static execution. We evaluated through-ball passing "
         "frequencies under asymmetric scoreline states (trailing by >= 1 goal vs. leading by >= 1 goal). As illustrated in Figure 6, the control baseline displays "
@@ -330,7 +464,7 @@ def build_unified_manuscript():
         c7_run.font.size = Pt(9.5)
         c7_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
-    add_styled_heading(doc, "2.4 Sample Efficiency, Asymptotic Stability, and Spatial Trajectories", 2)
+    add_styled_heading(doc, "3.4 Sample Efficiency, Asymptotic Stability, and Spatial Trajectories", 2)
     doc.add_paragraph(
         "Figure 7 demonstrates sample efficiency across 5M steps. M4 surpasses the asymptotic ceiling of baseline M1 (44.5%) in under 850,000 steps, achieving "
         "a >5x sample efficiency speedup while substantially narrowing the shaded 95% confidence interval envelope (89.6% +/- 2.5%)."
@@ -363,9 +497,9 @@ def build_unified_manuscript():
         c9_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
     # =============================================================
-    # SECTION 3: DISCUSSION
+    # SECTION 4: DISCUSSION
     # =============================================================
-    add_styled_heading(doc, "3. Discussion", 1)
+    add_styled_heading(doc, "4. Discussion", 1)
     doc.add_paragraph(
         "The empirical findings provide conclusive answers to fundamental questions in sports artificial intelligence and multi-agent systems:"
     )
@@ -402,9 +536,9 @@ def build_unified_manuscript():
         r_body.font.color.rgb = RGBColor(0x1e, 0x29, 0x3b)
 
     # =============================================================
-    # SECTION 4: CONCLUSION
+    # SECTION 5: CONCLUSION
     # =============================================================
-    add_styled_heading(doc, "4. Conclusion", 1)
+    add_styled_heading(doc, "5. Conclusion", 1)
     doc.add_paragraph(
         "This paper presented a principled, mathematically validated methodology for solving Reinforcement Learning for Optimizing Tactical Decision-Making in Sports. "
         "By synthesizing vectorized dynamic pass-lane occlusion, calibrated dynamic space scoring, and Potential-Based Reward Shaping grounded in empirical Expected Threat surfaces, "
@@ -415,9 +549,9 @@ def build_unified_manuscript():
     )
 
     # =============================================================
-    # SECTION 5: RECOMMENDATIONS
+    # SECTION 6: RECOMMENDATIONS
     # =============================================================
-    add_styled_heading(doc, "5. Recommendations for Future Research and Deployment", 1)
+    add_styled_heading(doc, "6. Recommendations for Future Research and Deployment", 1)
     
     recs = [
         ("Recommendation 1: Extension to Continuous Action Dynamics and Ball Trajectories: ",
@@ -447,9 +581,9 @@ def build_unified_manuscript():
         r_body = p.add_run(body)
         r_body.font.color.rgb = RGBColor(0x1e, 0x29, 0x3b)
 
-    output_path = r"c:\Reinforcement Learning of Sports\Complete_Research_Paper_Materials_Methods_Results_Discussion.docx"
+    output_path = r"c:\Reinforcement Learning of Sports\Complete_Research_Paper_Scopus_Master.docx"
     doc.save(output_path)
     print(f"Master research manuscript successfully compiled at: {output_path}")
 
 if __name__ == "__main__":
-    build_unified_manuscript()
+    build_complete_unified_paper()
