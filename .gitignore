@@ -39,3 +39,9 @@ wheels/
 .idea/
 *.swp
 *.swo
+
+# Word documents and text files (temporarily excluded from repository tracking)
+*.docx
+*.doc
+*.txt
+~$*.docx
