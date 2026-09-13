@@ -40,8 +40,16 @@ wheels/
 *.swp
 *.swo
 
-# Word documents and text files (temporarily excluded from repository tracking)
+# Word documents and text files (excluded from repository tracking)
 *.docx
 *.doc
 *.txt
 ~$*.docx
+
+# Word document generation scripts (local only, excluded from GitHub)
+generate_docx_report.py
+generate_final_complete_article.py
+generate_master_manuscript.py
+git_commit_pipeline.py
+scratch/
+
