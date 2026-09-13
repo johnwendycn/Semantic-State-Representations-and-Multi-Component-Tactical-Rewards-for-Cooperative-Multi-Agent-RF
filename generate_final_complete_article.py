@@ -1028,17 +1028,25 @@ def generate_scopus_masterpiece():
         c4_run.font.size = Pt(9.5)
         c4_run.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
 
-    add_styled_heading(doc, "3.2 Multi-Criteria Radar Profiling and Baseline Benchmark Comparison", 2)
+    add_styled_heading(doc, "3.2 Multi-Criteria Radar Profiling and Methodological Architectural Positioning", 2)
     doc.add_paragraph(
-        "Figure 5 depicts a five-axis polar radar chart across Win Rate (72.2%), Pass Completion (86.8%), OBMQ (0.89), TPCA (89.4%), and Cohen's kappa (0.77). "
-        "The proposed model M4 strictly Pareto-dominates the control baseline M1 across all metrics. "
-        "Table 4 provides an explicit comparison against published state-of-the-art architectures evaluated on the same Google Research Football benchmark scenarios."
+        "Figure 5 illustrates a five-axis polar radar profile contrasting the control baseline M1 against the proposed unified framework M4 across "
+        "Match Win Rate (72.2%), Pass Completion Rate (86.8%), Off-Ball Movement Quality (OBMQ = 0.89), Tactical Pattern Consistency (TPCA = 89.4%), "
+        "and Expert Coaching Stylistic Agreement (Cohen's κ = 0.77). The proposed model M4 strictly Pareto-dominates the control baseline across all performance and tactical axes."
+    )
+    doc.add_paragraph(
+        "To contextualize our technical contributions without conflating disparate experimental settings, Table 4 provides a structured methodological and architectural "
+        "positioning of the proposed framework relative to contemporary cooperative MARL literature. Rather than attempting cross-study empirical comparisons that juxtapose "
+        "win rate percentages across divergent scenario configurations, undocumented bot difficulty levels, or proprietary evaluation codebases, all quantitative experimental "
+        "results reported in this work (Table 3 and Figures 4–6) were implemented and trained by the authors from scratch under an identical, strictly controlled "
+        "Google Research Football protocol (5.0M environment steps across five independent random seeds). Table 4 delineates how our vectorized pass-lane geometry, "
+        "dynamic velocity-cone occlusion, and mathematically proven PBRS potential function overcome foundational limitations inherent to alternative paradigms."
     )
 
-    # Table 4: SOTA Comparison
+    # Table 4: Architectural Positioning Matrix
     t_sota = doc.add_table(rows=6, cols=6)
     t_sota.alignment = WD_TABLE_ALIGNMENT.CENTER
-    sota_headers = ["Algorithm / Model", "Source", "Representation", "Reward Formulation", "Win Rate (%)", "TPCA (%)"]
+    sota_headers = ["Algorithmic Paradigm", "Representative Literature", "Observation Modeling", "Reward Formulation", "Policy Invariance Guarantee", "Core Tactical Mechanism & Trade-offs"]
     for c_i, h_txt in enumerate(sota_headers):
         c = t_sota.rows[0].cells[c_i]
         set_cell_background(c, "0F172A")
@@ -1046,15 +1054,15 @@ def generate_scopus_masterpiece():
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         r = p.add_run(h_txt)
         r.bold = True
-        r.font.size = Pt(9)
+        r.font.size = Pt(8.5)
         r.font.color.rgb = RGBColor(0xff, 0xff, 0xff)
 
     sota_data = [
-        ("Standard MAPPO", "Kurach et al. (2019)", "Raw Kinematics (115D)", "Sparse Outcome (±1)", "53.6 ± 7.8", "71.8 ± 3.2"),
-        ("QMIX Baseline", "Rashid et al. (2020)", "Raw Kinematics (115D)", "Sparse Outcome (±1)", "51.2 ± 8.1", "69.5 ± 3.4"),
-        ("EDMS Framework", "Ide et al. (2025a)", "Relational Features", "Sparse Outcome (±1)", "60.0 ± 7.0", "82.5 ± 2.5"),
-        ("GIRL-GNN Topology", "Lin et al. (2026)", "Graph GNN Dynamic", "Heuristic Dense Shaping", "66.4 ± 6.5", "84.2 ± 2.3"),
-        ("Proposed M4 (Unified)", "This Work", "Vectorized Tactical (139D)", "Empirical xT PBRS", "72.2 ± 6.2", "89.4 ± 2.2")
+        ("Decentralized PPO (MAPPO)", "Yu et al. (2022); Kurach et al. (2019)", "Raw Kinematics o_raw (115D)", "Sparse Match Outcome (±1)", "Trivial (Unshaped Base MDP)", "Severe credit assignment delay; absence of geometric pass corridors results in spatial crowding and blind passing into covered channels."),
+        ("Value Factorization (QMIX)", "Rashid et al. (2020); Brandão et al. (2022)", "Raw Kinematics + Mixing Net", "Global Team Outcome Return", "Trivial (Unshaped Joint Return)", "Monotonicity constraint ∂Q_tot/∂Q_i ≥ 0 restricts expressiveness in asymmetric tactical maneuvers; high sample complexity in 11v11 continuous-space play."),
+        ("Relational States (EDMS)", "Ide et al. (2025a, 2025b); Nakahara et al. (2023)", "Pairwise Distances & Pitch Zones", "Sparse Outcome + Heuristic Sub-goals", "Not Guaranteed (Heuristic bonuses alter MDP)", "Captures relative agent distances, but lacks continuous dynamic velocity-cone interception modeling and line-of-sight pass corridor occlusion."),
+        ("Graph Topological RL (GIRL)", "Lin et al. (2026); Raabe et al. (2022)", "Dynamic Spatial Graph Attention", "Dense Spatial Heuristic Shaping", "Violated (Dense shaping alters optimal policy)", "Expressive relational graph topology, but quadratic message-passing complexity O(N²) induces inference latency; heuristic rewards induce cyclic reward hacking (Mohan, 2025)."),
+        ("Proposed Unified Architecture (M4)", "This Work", "Vectorized Tactical Tensor o_aug (139D)", "Potential-Based Tactical Shaping R_total", "Formally Proven (Theorem 1; Ng et al., 1999)", "Integrates continuous Gaussian interception radii, dynamic velocity cones, and tri-fold state potential (xT threat, space unmarking S(j), defensive dispersion Disp(D)).")
     ]
     for r_i, s_row in enumerate(sota_data):
         row = t_sota.rows[r_i + 1]
@@ -1063,23 +1071,21 @@ def generate_scopus_masterpiece():
             c = row.cells[c_i]
             set_cell_background(c, bg)
             p = c.paragraphs[0]
-            if c_i == 0:
+            if c_i in [0, 5]:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                run_s = p.add_run(val_txt)
-                run_s.font.size = Pt(9)
-                if r_i == 4:
-                    run_s.bold = True
             else:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                run_s = p.add_run(val_txt)
-                run_s.font.size = Pt(9)
-                if r_i == 4:
-                    run_s.bold = True
+            run_s = p.add_run(val_txt)
+            run_s.font.size = Pt(8.5)
+            if r_i == 4:
+                run_s.bold = True
+                if c_i == 0:
+                    run_s.font.color.rgb = RGBColor(0x0f, 0x17, 0x2a)
 
     doc.add_paragraph().paragraph_format.space_after = Pt(4)
     c_tbl4 = doc.add_paragraph()
     c_tbl4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c4_txt = c_tbl4.add_run("Table 4: Comparative evaluation against established MARL baselines on the GRF benchmark.")
+    c4_txt = c_tbl4.add_run("Table 4: Methodological and architectural positioning of the proposed framework relative to contemporary cooperative sports MARL literature.")
     c4_txt.font.size = Pt(9)
     c4_txt.italic = True
 
@@ -1390,6 +1396,7 @@ def generate_scopus_masterpiece():
         "Yang, J., Ge, H., & Cui, Y. (2025). An AI framework for counterattack detection and decision-making evaluation in football. Journal of Big Data, 12, Article 1128. https://doi.org/10.1186/s40537-025-01128-3",
         "Yang, L., Zhou, C., & Sang, B. (2026). Domain-specific contexts promote model-based decision making for basketball players. Scientific Reports, 16, Article 54649. https://doi.org/10.1038/s41598-026-54649-z",
         "Yang, Y., Li, F., & Chang, H. (2023). Enhancing short track speed skating performance through improved DDQN tactical decision model. Sensors, 23(24), 9904. https://doi.org/10.3390/s23249904",
+        "Yu, C., Velu, A., Vinitsky, E., Gao, J., Wang, Y., Bayen, A., & Wu, Y. (2022). The surprising effectiveness of PPO in cooperative multi-agent games. Advances in Neural Information Processing Systems, 35, 24611–24624.",
         "Yu, Q. (2025). Multi modal hierarchical reinforcement learning framework for dynamic sports sponsorship optimization. Scientific Reports, 15, Article 27915. https://doi.org/10.1038/s41598-025-27915-9",
         "Yu, X., Lin, Y., Wang, X., Han, S., & Lv, K. (2023). GHQ: Grouped hybrid Q-learning for cooperative heterogeneous multi-agent reinforcement learning. Complex & Intelligent Systems, 10, 1–18. https://doi.org/10.1007/s40747-024-01415-1",
         "Yuan, C., Al Forhad, M. A., Bansal, R., Sidorova, A., & Albert, M. V. (2024). Multi-agent dual level reinforcement learning of strategy and tactics in competitive games. Results in Control and Optimization, 15, Article 100471. https://doi.org/10.1016/j.rico.2024.100471",
