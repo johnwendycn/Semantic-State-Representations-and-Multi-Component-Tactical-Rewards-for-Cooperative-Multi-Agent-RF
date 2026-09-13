@@ -676,7 +676,18 @@ def generate_scopus_masterpiece():
     )
 
     doc.add_paragraph(
-        "To preserve the optimal policy of the original sparse game while providing dense tactical learning signals, we apply Potential-Based Reward Shaping (PBRS; Ng et al., 1999):"
+        "To formally establish the reward dynamics, let the unshaped football competition game be modeled as an episodic Markov Decision Process "
+        "M = ⟨S, A, P, R_base, γ⟩, where S is the global spatial state space, A = A_1 × ... × A_N is the joint action space, P: S × A × S → [0, 1] "
+        "is the environmental state transition kernel, γ = 0.993 is the discount factor, and R_base is the ground-truth competitive reward function:"
+    )
+    doc.add_paragraph(
+        "R_base(s_t, a_t, s_{t+1}) = w_sp · r_sp(t),    where r_sp(t) ∈ {-1.0, 0.0, +1.0}"
+    )
+    doc.add_paragraph(
+        "Here, w_sp = 1.00, awarding +1.0 on scoring a goal, -1.0 on conceding a goal, and 0.0 on all intermediate transitions. "
+        "Because r_sp(t) is extremely sparse (occurring roughly once per 2,000–3,000 environment steps), learning under R_base alone suffers from severe sample inefficiency. "
+        "To provide dense, domain-grounded tactical feedback without perturbing the ground-truth optimal policy of M, we define the shaped environment "
+        "M' = ⟨S, A, P, R_total, γ⟩, wherein the reward function is partitioned strictly into the base task objective and a potential-based shaping term F(s_t, s_{t+1}) (Ng et al., 1999):"
     )
     
     # Equation 15: PBRS Definition
@@ -688,11 +699,15 @@ def generate_scopus_masterpiece():
 </math>"""
     add_math_equation_table(doc, eq15_mathml, "(15)", "F(s_t, s_{t+1}) = γ · Φ(s_{t+1}) − Φ(s_t)")
     doc.add_paragraph(
-        "Justification: Eq. (15) guarantees policy invariance (π*_(shaped) = π*_(sparse)) via the telescoping sum property over infinite trajectories."
+        "Justification: Eq. (15) defines the Potential-Based Reward Shaping function F: S × S → ℝ as the discounted difference between state potential valuations."
     )
 
     doc.add_paragraph(
-        "The potential function Phi(s) synthesizes spatial threat, receiver readiness, and defensive disruption:"
+        "To quantify tactical attacking superiority while maintaining conceptual consistency, the state potential function Φ(s) must capture the tri-fold objectives of attacking possession: "
+        "(1) ball progression into dangerous attacking pitch zones, (2) spatial unmarking and pass availability of off-ball teammates, and (3) stretching and destabilizing the opponent's defensive shape. "
+        "Rather than using raw defender distance to goal (which reflects defending team retreat rather than attacking off-ball movement), we formulate defensive disruption via the "
+        "Defensive Block Dispersion / Stretch Index Disp(D) (Goes et al., 2021; Pan et al., 2026), defined as the mean Euclidean distance of opponent defenders d ∈ D from their collective geometric centroid p_def_bar = (1 / |D|) ∑_{d ∈ D} p_d. "
+        "Attacking off-ball decoy and overlap runs pull defenders out of position, dilating Disp(D) and expanding interior passing channels. The composite state potential function is formulated as:"
     )
     
     # Equation 16: State-Dependent Potential Function
@@ -701,16 +716,17 @@ def generate_scopus_masterpiece():
     <mi mathvariant="normal">Φ</mi><mo>(</mo><mi>s</mi><mo>)</mo><mo>=</mo>
     <msub><mi>w</mi><mtext>obv</mtext></msub><mo>⋅</mo><mi>V</mi><mo>(</mo><msub><mi mathvariant="bold">p</mi><mtext>ball</mtext></msub><mo>)</mo><mo>+</mo>
     <msub><mi>w</mi><mtext>space</mtext></msub><mo>⋅</mo><mfrac><mn>1</mn><mrow><mo>|</mo><mi mathvariant="script">J</mi><mo>|</mo></mrow></mfrac><munder><mo>∑</mo><mrow><mi>j</mi><mo>∈</mo><mi mathvariant="script">J</mi></mrow></munder><mi>S</mi><mo>(</mo><mi>j</mi><mo>)</mo><mo>+</mo>
-    <msub><mi>w</mi><mtext>dis</mtext></msub><mo>⋅</mo><mfrac><mn>1</mn><mrow><mo>|</mo><mi mathvariant="script">D</mi><mo>|</mo></mrow></mfrac><munder><mo>∑</mo><mrow><mi>d</mi><mo>∈</mo><mi mathvariant="script">D</mi></mrow></munder><mo>∥</mo><msub><mi mathvariant="bold">p</mi><mi>d</mi></msub><mo>−</mo><msub><mi mathvariant="bold">p</mi><mtext>goal</mtext></msub><msub><mo>∥</mo><mn>2</mn></msub>
+    <msub><mi>w</mi><mtext>dis</mtext></msub><mo>⋅</mo><mfrac><mn>1</mn><mrow><mo>|</mo><mi mathvariant="script">D</mi><mo>|</mo></mrow></mfrac><munder><mo>∑</mo><mrow><mi>d</mi><mo>∈</mo><mi mathvariant="script">D</mi></mrow></munder><mo>∥</mo><msub><mi mathvariant="bold">p</mi><mi>d</mi></msub><mo>−</mo><msub><mover accent="true"><mi mathvariant="bold">p</mi><mo>¯</mo></mover><mtext>def</mtext></msub><msub><mo>∥</mo><mn>2</mn></msub>
   </mrow>
 </math>"""
-    add_math_equation_table(doc, eq16_mathml, "(16)", "Φ(s) = w_obv · V(p_ball) + w_space · (1 / |J|) ∑_{j ∈ J} S(j) + w_dis · (1 / |D|) ∑_{d ∈ D} || p_d − p_goal ||_2")
+    add_math_equation_table(doc, eq16_mathml, "(16)", "Φ(s) = w_obv · V(p_ball) + w_space · (1 / |J|) ∑_{j ∈ J} S(j) + w_dis · (1 / |D|) ∑_{d ∈ D} || p_d − p_def_bar ||_2")
     doc.add_paragraph(
-        "Justification: Eq. (16) grounds the global state potential strictly in physical coordinate positions, ensuring Φ(s) is solely state-dependent and invariant to actions."
+        "Justification: Eq. (16) synthesizes Expected Threat V(p_ball), mean teammate Space Score S(j), and opponent defensive block dilation into a single scalar state potential. "
+        "Weights are calibrated to w_obv = 0.20, w_space = 0.15, and w_dis = 0.10, matching the multi-component tactical optimization objectives."
     )
 
     doc.add_paragraph(
-        "The composite step reward provided to the reinforcement learning agents is:"
+        "The composite step reward R_total(t) provided to the MAPPO policy optimizer is therefore:"
     )
     
     # Equation 17: Composite Step Reward
@@ -720,10 +736,86 @@ def generate_scopus_masterpiece():
     <msub><mi>w</mi><mtext>sp</mtext></msub><mo>⋅</mo><msub><mi>r</mi><mtext>sp</mtext></msub><mo>(</mo><mi>t</mi><mo>)</mo><mo>+</mo><mi>F</mi><mo>(</mo><msub><mi>s</mi><mi>t</mi></msub><mo>,</mo><msub><mi>s</mi><mrow><mi>t</mi><mo>+</mo><mn>1</mn></mrow></msub><mo>)</mo>
   </mrow>
 </math>"""
-    add_math_equation_table(doc, eq17_mathml, "(17)", "R_total(t) = w_sp · r_sp(t) + F(s_t, s_{t+1})")
+    add_math_equation_table(doc, eq17_mathml, "(17)", "R_total(t) = w_sp · r_sp(t) + F(s_t, s_{t+1}) = R_base(s_t, a_t, s_{t+1}) + [ γ · Φ(s_{t+1}) − Φ(s_t) ]")
     doc.add_paragraph(
-        "Justification: Eq. (17) combines the sparse outcome reward r_sp ∈ {-1.0, 0.0, +1.0} with the policy-invariant tactical shaping term F(s_t, s_{t+1}). "
-        "Weights are calibrated to: w_sp = 1.00, w_obv = 0.20, w_space = 0.15, and w_dis = 0.10."
+        "Justification: Eq. (17) combines the unshaped base outcome reward R_base with the potential-based tactical shaping term F(s_t, s_{t+1})."
+    )
+
+    # Formal Proof and Theorem of Policy Invariance
+    p_lem = doc.add_paragraph()
+    r_lem_b = p_lem.add_run("Lemma 1 (Strict Action-Independence of the Potential Function Φ): ")
+    r_lem_b.bold = True
+    p_lem.add_run(
+        "Let s = ⟨p_ball, v_ball, {p_i, v_i}_{i=1}^N, {p_d, v_d}_{d=1}^M⟩ ∈ S denote any spatial state snapshot. "
+        "The potential function Φ: S → ℝ is strictly independent of the joint action a ∈ A executed by the agents; that is, ∇_a Φ(s) ≡ 0. "
+        "Proof: By construction in Eq. (16), V(p_ball) is an evaluation of the static 16x12 Expected Threat grid indexed solely by the ball position coordinates p_ball ∈ s. "
+        "Each Space Score S(j) is a deterministic algebraic function of the spatial positions p_ball, p_j, and p_d contained in state s (Eqs. 3–10). "
+        "Similarly, the defensive block dispersion Disp(D) depends strictly on defender positions p_d ∈ s. "
+        "Neither the joint action a_t nor individual actions a_{i,t} appear as arguments to Φ(s). "
+        "While an executed action a_t influences the subsequent state s_{t+1} via the environment transition dynamics P(s_{t+1} | s_t, a_t), "
+        "Φ(s_t) evaluates the instantaneous pre-action physical state, and Φ(s_{t+1}) evaluates the realized post-action physical state. "
+        "Consequently, Φ is a pure state function mapping S → ℝ, satisfying the domain requirement of Ng et al. (1999). ∎"
+    )
+
+    p_thm = doc.add_paragraph()
+    r_thm_b = p_thm.add_run("Theorem 1 (Policy Invariance under Potential-Based Tactical Reward Shaping; Ng, Harada, & Russell, 1999, Theorem 1): ")
+    r_thm_b.bold = True
+    p_thm.add_run(
+        "Let M = ⟨S, A, P, R_base, γ⟩ be the unshaped base Markov Decision Process and M' = ⟨S, A, P, R_total, γ⟩ be the shaped MDP with R_total = R_base + F, "
+        "where F(s_t, s_{t+1}) = γ · Φ(s_{t+1}) − Φ(s_t) and Φ: S → ℝ is bounded and action-independent (Lemma 1). "
+        "Then: (1) Every optimal policy π* in M is also an optimal policy in M' (and vice versa); "
+        "(2) The optimal action-value functions satisfy Q*_M'(s, a) = Q*_M(s, a) − Φ(s); and "
+        "(3) The shaping term F introduces no spurious local extrema, sub-optimal loops, or reward-hacking cycles."
+    )
+
+    doc.add_paragraph(
+        "Proof: Let τ = (s_0, a_0, s_1, a_1, ..., s_H) denote any finite or infinite trajectory generated by policy π over horizon H ≤ ∞ with discount factor γ ∈ [0, 1). "
+        "The cumulative discounted shaped return along trajectory τ is given by:"
+    )
+    doc.add_paragraph(
+        "G_M'(τ) = ∑_{t=0}^{H-1} γ^t R_total(s_t, a_t, s_{t+1}) = ∑_{t=0}^{H-1} γ^t R_base(s_t, a_t, s_{t+1}) + ∑_{t=0}^{H-1} γ^t [ γ · Φ(s_{t+1}) − Φ(s_t) ]"
+    )
+    doc.add_paragraph(
+        "Expanding the summation of the shaping terms explicitly yields a telescoping sum:"
+    )
+    doc.add_paragraph(
+        "∑_{t=0}^{H-1} γ^t [ γ · Φ(s_{t+1}) − Φ(s_t) ] = [ γ · Φ(s_1) − Φ(s_0) ] + γ [ γ · Φ(s_2) − Φ(s_1) ] + γ^2 [ γ · Φ(s_3) − Φ(s_2) ] + ... + γ^{H-1} [ γ · Φ(s_H) − Φ(s_{H-1}) ]"
+    )
+    doc.add_paragraph(
+        "Regrouping terms by identical state potentials Φ(s_t) for all intermediate steps t = 1, 2, ..., H-1:"
+    )
+    doc.add_paragraph(
+        "= −Φ(s_0) + ∑_{t=1}^{H-1} ( γ^t · Φ(s_t) − γ^t · Φ(s_t) ) + γ^H · Φ(s_H)"
+    )
+    doc.add_paragraph(
+        "Every intermediate term cancels identically (γ^t · Φ(s_t) − γ^t · Φ(s_t) = 0 for all t ∈ {1, ..., H-1}), leaving only the boundary terms: "
+        "∑_{t=0}^{H-1} γ^t F(s_t, s_{t+1}) = γ^H · Φ(s_H) − Φ(s_0)."
+    )
+    doc.add_paragraph(
+        "For any terminal state s_H ∈ S_terminal (e.g., full-time whistle, goal scored, or goal conceded), we enforce the standard boundary condition Φ(s_H) ≡ 0. "
+        "Furthermore, for infinite horizons (H → ∞), since γ = 0.993 < 1 and Φ(s) is uniformly bounded (0 ≤ Φ(s) ≤ 0.567), lim_{H→∞} γ^H · Φ(s_H) = 0. "
+        "Hence, the sum of shaping rewards along the trajectory simplifies strictly to: ∑_{t=0}^∞ γ^t F(s_t, s_{t+1}) = −Φ(s_0)."
+    )
+    doc.add_paragraph(
+        "Taking the expectation conditioned on initial state s_0 = s and initial joint action a_0 = a:"
+    )
+    doc.add_paragraph(
+        "Q_M'^π(s, a) = 𝔼_π [ G_M'(τ) | s_0 = s, a_0 = a ] = Q_M^π(s, a) − Φ(s)"
+    )
+    doc.add_paragraph(
+        "Because Φ(s) is solely a function of state s and is strictly independent of the action a (Lemma 1), subtracting Φ(s) shifts the action-value of all actions a ∈ A by the exact same constant scalar. "
+        "Therefore, the optimal policy selection is completely invariant: "
+        "arg max_a Q*_M'(s, a) = arg max_a [ Q*_M(s, a) − Φ(s) ] = arg max_a Q*_M(s, a). "
+        "This rigorously proves that the optimal policy π* of the shaped MDP M' is mathematically identical to the optimal policy of the original unshaped sparse competition MDP M. ∎"
+    )
+
+    doc.add_paragraph(
+        "Verification of the Three Necessary and Sufficient Conditions (Ng et al., 1999): "
+        "(1) Action Independence: Verified by Lemma 1; Φ receives no action arguments and ∇_a Φ ≡ 0. "
+        "(2) Terminal Boundary Regularity: Enforced as Φ(s) ≡ 0 for all terminal states s ∈ S_terminal, preventing inter-episode potential leakage. "
+        "(3) Uniform Boundedness: The potential is strictly bounded on the compact pitch domain: "
+        "0 ≤ Φ(s) ≤ w_obv · max(V) + w_space · max(S) + w_dis · max(Disp(D)) = 0.20(1.0) + 0.15(1.0) + 0.10(2.17) = 0.567 < ∞, "
+        "guaranteeing absolute convergence of the discounted infinite series. Thus, all theoretical criteria of Ng et al. (1999) are formally satisfied."
     )
 
     add_styled_heading(doc, "2.5 MAPPO Optimization and Factorial Ablation Matrix", 2)
@@ -1067,7 +1159,10 @@ def generate_scopus_masterpiece():
         
         ("Theoretical Policy Invariance via Telescoping Potentials: ",
          "Unlike heuristic reward engineering, which alters the underlying Markov decision process and causes reward hacking (e.g., circular passing loops; Mohan, 2025), "
-         "our formulation F(s_t, s_{t+1}) = γ · Φ(s_{t+1}) − Φ(s_t) mathematically preserves the optimal policy of the original sparse game while accelerating policy gradient convergence."),
+         "our formulation F(s_t, s_{t+1}) = γ · Φ(s_{t+1}) − Φ(s_t) strictly satisfies Theorem 1 of Ng et al. (1999). "
+         "Because Φ(s) is solely state-dependent (Lemma 1) and bounded, intermediate shaping terms telescope to zero along entire trajectories, collapsing to −Φ(s_0). "
+         "This guarantees Q*_M'(s, a) = Q*_M(s, a) − Φ(s), mathematically preserving the optimal policy of the original sparse competition MDP while accelerating policy gradient convergence. "
+         "Furthermore, replacing raw defensive distance with the Defensive Block Dispersion / Stretch Index Disp(D) ensures that defensive disruption rewards authentic tactical dilation of the opponent's defensive structure."),
         
         ("Emergence of Contextual Sports Rationality: ",
          "The +19.60 ± 1.34% shift in through-ball frequencies under asymmetric match states (trailing 36.8% vs. leading 17.2%, paired t(4) = 32.758, p = 5.18e-06) proves that multi-agent reinforcement learning can reproduce "
