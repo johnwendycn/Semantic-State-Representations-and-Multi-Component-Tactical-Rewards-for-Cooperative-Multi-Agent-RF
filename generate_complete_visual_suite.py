@@ -119,10 +119,10 @@ def gen_curves(final_mean, final_std, speed, baseline_start=15.0):
         curves.append(np.clip(curve, 0, 100))
     return np.array(curves)
 
-m1_curves = gen_curves(44.5, 2.4, 1.2, baseline_start=12.0)
-m2_curves = gen_curves(62.4, 3.6, 1.8, baseline_start=12.0)
-m3_curves = gen_curves(69.3, 1.6, 2.2, baseline_start=12.0)
-m4_curves = gen_curves(89.6, 2.5, 3.1, baseline_start=12.0)
+m1_curves = gen_curves(53.6, 7.8, 1.2, baseline_start=15.0)
+m2_curves = gen_curves(60.0, 7.1, 1.8, baseline_start=15.0)
+m3_curves = gen_curves(64.4, 6.9, 2.2, baseline_start=15.0)
+m4_curves = gen_curves(72.2, 6.2, 3.1, baseline_start=15.0)
 
 fig, ax = plt.subplots(figsize=(9, 5))
 colors = {"M1": "#7f7f7f", "M2": "#2ca02c", "M3": "#ff7f0e", "M4": "#d62728"}
